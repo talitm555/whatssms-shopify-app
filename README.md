@@ -80,6 +80,8 @@ Copy `.env.example` to `.env` and fill:
 
 | Variable | Purpose |
 |----------|---------|
+| `PORT` | Local dev server port (default `3000`). Used by Vite and by `npm run dev` → `shopify app dev --localhost-port`. |
+| `VITE_HMR_TUNNEL` | Set to `1` only if you open the app in the browser via your **tunnel hostname** (not `https://localhost:PORT`). If unset, Vite HMR targets `https://localhost:<PORT>` so `shopify app dev`’s HTTPS proxy works (avoids a blank page). |
 | `DATABASE_URL` | SQLite dev: `file:./dev.sqlite` (use Postgres in production). |
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | From Partner Dashboard. |
 | `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts). |
