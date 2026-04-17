@@ -1,8 +1,9 @@
-# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+# Copy to shopify.app.dev.toml (gitignored) and set YOUR_DEV_HTTPS_HOST.
+# Redirect URLs must match @shopify/shopify-app-remix auth routes (see shopify.server.ts authPathPrefix).
 
-client_id = "bc7662d24244b8f7f5afd69e0e5ab1d3"
+client_id = "YOUR_CLIENT_ID"
 name = "WhatsSMS.io"
-application_url = "https://shopify.whatssms.io"
+application_url = "https://YOUR_DEV_HTTPS_HOST"
 embedded = true
 
 [webhooks]
@@ -45,14 +46,12 @@ api_version = "2026-04"
   compliance_topics = [ "shop/redact" ]
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_checkouts,read_customers,read_orders,write_orders"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-# Paths from @shopify/shopify-app-remix (authPathPrefix "/auth"): OAuth callback + embedded session-token exchange.
 redirect_urls = [
-  "https://shopify.whatssms.io/auth/callback",
-  "https://shopify.whatssms.io/auth/session-token",
+  "https://YOUR_DEV_HTTPS_HOST/auth/callback",
+  "https://YOUR_DEV_HTTPS_HOST/auth/session-token",
 ]

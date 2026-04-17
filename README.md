@@ -35,7 +35,15 @@ Authentication uses the **`secret`** query parameter (API key from Tools → API
 
 ### Local dev URL vs tunnel (Mac)
 
-The Remix/Vite dev server binds to **`http://127.0.0.1:3000`** by default (`PORT` in `vite.config.ts`; override with env var `PORT`).
+The Remix/Vite server uses **`PORT`** from the environment (`vite.config.ts`; often `3000` when you run Vite alone). When you use **`shopify app dev`**, the CLI also starts a **proxy** and may choose a **random localhost port**—check the terminal line **`Proxy server started on port …`**. If your Cloudflare (or other) tunnel targets **`http://127.0.0.1:3000`** but the proxy is on another port, **nothing will answer on 3000**.
+
+**Stable port for an external tunnel (recommended):** pin the CLI to port 3000 and pass your already-running tunnel URL:
+
+```bash
+shopify app dev --config shopify.app.dev.toml --localhost-port 3000 --tunnel-url https://YOUR_TUNNEL_HOST
+```
+
+Start the tunnel first so it forwards to **`127.0.0.1:3000`**, then run the command above. Alternatively, point the tunnel at the **proxy port** printed in the terminal (no need for 3000).
 
 Shopify’s **embedded admin** and OAuth require a **public HTTPS URL**, not raw localhost. When you run:
 
@@ -43,21 +51,21 @@ Shopify’s **embedded admin** and OAuth require a **public HTTPS URL**, not raw
 shopify app dev
 ```
 
-the CLI starts a **tunnel** (e.g. Cloudflare/ngrok) and prints the **Preview / app URL** in the terminal. That HTTPS URL is what Shopify uses—use it for `SHOPIFY_APP_URL` and as the app’s base URL during that session.
-
-If you use your **own** tunnel (ngrok, Cloudflare Tunnel, etc.), point it at **`localhost:3000`** (or whatever `PORT` you set), then use the tunnel’s `https://…` URL everywhere Shopify asks for an app URL.
+the CLI may start its own tunnel or use yours; the **app home** line shows which URL the dev session uses. Use that for `SHOPIFY_APP_URL` during the session.
 
 **Git / `shopify.app.toml`:** Keep **`application_url = "https://shopify.whatssms.io"`** (production) in the committed `shopify.app.toml`. Do **not** commit short-lived free ngrok URLs that change every run—they will confuse teammates and CI.
 
 Recommended pattern:
 
-1. Copy `shopify.app.dev.toml.example` → **`shopify.app.dev.toml`** (this file is **gitignored**).
-2. Set `application_url` and `[auth].redirect_urls` to your **stable dev tunnel** (paid ngrok reserved domain, Cloudflare Tunnel hostname, etc.).
-3. Run dev with that config:
+1. Copy **`shopify.app.dev.toml.example`** → **`shopify.app.dev.toml`** (gitignored).
+2. Set **`application_url`** to your **stable dev HTTPS host** (Cloudflare Tunnel, reserved ngrok domain, etc.). Under **`[auth].redirect_urls`**, list exactly these two URLs (same host as `application_url`): **`…/auth/callback`** and **`…/auth/session-token`**—they match `@shopify/shopify-app-remix` with `authPathPrefix: "/auth"`.
+3. Run dev with that config. If you use your **own** tunnel, pin localhost and pass the tunnel URL:
 
    ```bash
-   shopify app dev --config shopify.app.dev.toml
+   shopify app dev --config shopify.app.dev.toml --localhost-port 3000 --tunnel-url https://YOUR_DEV_HOST
    ```
+
+   If the CLI manages the tunnel for you, `shopify app dev --config shopify.app.dev.toml` is enough—just aim your external tunnel at the **proxy port** from the terminal if you are not using `--localhost-port 3000`.
 
 4. Deploy production config when releasing: `shopify app deploy` using the default `shopify.app.toml`.
 
