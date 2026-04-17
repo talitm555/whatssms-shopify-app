@@ -61,6 +61,26 @@ npx prisma migrate deploy
 npm run dev
 ```
 
+### Protected customer data (required for `shopify app dev`)
+
+If dev preview fails with:
+
+`This app is not approved to subscribe to webhook topics containing protected customer data`
+
+then Shopify has not yet allowed this app to register webhooks whose payloads include customer-related data (`orders/*`, `customers/*`, `checkouts/*`, compliance topics). That is expected until you configure **Protected customer data** in the Partner Dashboard.
+
+Do this once per app (dev stores do **not** require App Store review; see [Work with protected customer data](https://shopify.dev/docs/apps/launch/protected-customer-data)):
+
+1. In [Partner Dashboard](https://partners.shopify.com) → **Apps** → **WhatsSMS.io** (your app).
+2. Ensure a **distribution method** is selected for the app (required before PCD requests).
+3. Open **API access requests** (or **API access** in the app sidebar, depending on UI).
+4. Under **Protected customer data access**, choose **Request access**.
+5. Select **Protected customer data**, describe why the app needs it (e.g. order notifications, COD SMS, abandoned checkout), and **Save**.
+6. If you use **name, address, phone, or email** (this app does for messaging), select those **protected customer fields**, add reasons, and **Save**.
+7. Complete **Data protection details** as prompted. For apps used only on a **development store**, you can use customer data in development after these steps without submitting the full app for review.
+
+Then run `shopify app dev` again. If webhooks were partially registered before, reinstall the app on the dev store or run `shopify app deploy` so subscriptions match `shopify.app.toml`.
+
 ### Tests
 
 ```bash
@@ -68,6 +88,12 @@ npm test
 ```
 
 Covers Shopify webhook HMAC verification helpers and COD detection / tag naming.
+
+### npm audit & install warnings
+
+- **`npm audit`**: `package.json` **overrides** pin patched transitive versions (`esbuild`, `lodash`, `minimatch`, `tar`, `cacache`, `estree-util-value-to-estree`, etc.). After `npm install`, you should see **0 vulnerabilities**.
+- **`.npmrc`**: `legacy-peer-deps=true` avoids noisy **ERESOLVE** / optional-peer issues between Vite and `@types/node` (common with Remix + npm 10+). It does not change the security posture of the resolved tree.
+- **Deprecation warnings** (`inflight`, old `glob` via ESLint’s dependency chain): come from **`@remix-run/eslint-config`** → ESLint 8. Clearing them fully means migrating to **ESLint 9** + flat config when Remix’s official config supports it, or replacing the dev ESLint preset. They do not affect production runtime bundles.
 
 ## Shopify scopes (`shopify.app.toml`)
 

@@ -1,45 +1,54 @@
-# Learn more: https://shopify.dev/docs/apps/tools/cli/configuration
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = ""
-
-[access_scopes]
-scopes = "read_orders,write_orders,read_customers,read_checkouts"
+client_id = "bc7662d24244b8f7f5afd69e0e5ab1d3"
+name = "WhatsSMS.io"
+application_url = "https://shopify.whatssms.io"
+embedded = true
 
 [webhooks]
-api_version = "2025-01"
+api_version = "2026-04"
 
   [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
-  topics = ["app/uninstalled"]
 
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
 
   [[webhooks.subscriptions]]
-  topics = ["orders/create"]
+  topics = [ "orders/create" ]
   uri = "/webhooks/orders/create"
 
   [[webhooks.subscriptions]]
-  topics = ["orders/updated"]
+  topics = [ "orders/updated" ]
   uri = "/webhooks/orders/updated"
 
   [[webhooks.subscriptions]]
-  topics = ["customers/create"]
+  topics = [ "customers/create" ]
   uri = "/webhooks/customers/create"
 
   [[webhooks.subscriptions]]
-  topics = ["checkouts/update"]
+  topics = [ "checkouts/update" ]
   uri = "/webhooks/checkouts/update"
 
   [[webhooks.subscriptions]]
   uri = "/webhooks/customers/data_request"
-  compliance_topics = ["customers/data_request"]
+  compliance_topics = [ "customers/data_request" ]
 
   [[webhooks.subscriptions]]
   uri = "/webhooks/customers/redact"
-  compliance_topics = ["customers/redact"]
+  compliance_topics = [ "customers/redact" ]
 
   [[webhooks.subscriptions]]
   uri = "/webhooks/shop/redact"
-  compliance_topics = ["shop/redact"]
+  compliance_topics = [ "shop/redact" ]
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_checkouts,read_customers,read_orders,write_orders"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [ ]
