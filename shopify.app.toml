@@ -1,0 +1,45 @@
+# Learn more: https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = ""
+
+[access_scopes]
+scopes = "read_orders,write_orders,read_customers,read_checkouts"
+
+[webhooks]
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/create"]
+  uri = "/webhooks/orders/create"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/updated"]
+  uri = "/webhooks/orders/updated"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/create"]
+  uri = "/webhooks/customers/create"
+
+  [[webhooks.subscriptions]]
+  topics = ["checkouts/update"]
+  uri = "/webhooks/checkouts/update"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/data_request"
+  compliance_topics = ["customers/data_request"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/redact"
+  compliance_topics = ["customers/redact"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/shop/redact"
+  compliance_topics = ["shop/redact"]

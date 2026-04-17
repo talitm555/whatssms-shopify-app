@@ -1,0 +1,124 @@
+// Prisma schema — WhatsSMS Shopify app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+/// Per-shop app settings; WhatsSMS secret stored encrypted (AES-256-GCM).
+model ShopSettings {
+  shop     String @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  encryptedWhatssmsSecret String?
+  whatssmsApiBaseUrl      String?
+
+  defaultSmsMode     String @default("devices")
+  defaultSmsDeviceId String?
+  defaultWaAccountId String?
+
+  codEnabled        Boolean @default(true)
+  codSendSms        Boolean @default(true)
+  codSendWhatsapp   Boolean @default(false)
+  codSmsTemplate    String  @default("Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_sms}}")
+  codWaTemplate     String  @default("Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_wa}}")
+  codLinkTtlHours   Int     @default(72)
+  /// Comma-separated substrings for extra COD gateway detection (optional).
+  codGatewayHints   String?
+
+  marketingRequiresSmsConsent Boolean @default(true)
+}
+
+/// Configurable automation rules (parity with plugin philosophy).
+model Automation {
+  id        String   @id @default(cuid())
+  shop      String
+  key       String
+  enabled   Boolean  @default(false)
+  sendSms   Boolean  @default(false)
+  sendWa    Boolean  @default(false)
+  template  String   @default("")
+  smsMode   String?
+  smsDevice String?
+  waAccount String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, key])
+}
+
+/// Idempotent webhook processing (Shopify may retry).
+model WebhookReceipt {
+  id               String   @id @default(cuid())
+  shop             String
+  topic            String
+  webhookId        String   @unique
+  payloadHash      String?
+  processedAt      DateTime @default(now())
+}
+
+/// COD confirmation tokens for public links (opaque + expiry).
+model CodToken {
+  id             String    @id @default(cuid())
+  shop           String
+  orderGid       String
+  orderNumericId String
+  publicToken    String    @unique
+  expiresAt      DateTime
+  resolvedAction String?
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([shop, orderGid])
+}
+
+/// Lightweight job queue (process with worker/cron in production).
+model AsyncJob {
+  id        String   @id @default(cuid())
+  shop      String
+  type      String
+  payload   String
+  status    String   @default("pending")
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  runAfter  DateTime @default(now())
+
+  @@index([status, runAfter])
+}
+
+/// Minimal customer PII for GDPR redaction mapping (optional rows).
+model StoredCustomerRef {
+  id          String @id @default(cuid())
+  shop        String
+  customerGid String
+  createdAt   DateTime @default(now())
+
+  @@unique([shop, customerGid])
+}
