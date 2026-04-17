@@ -33,6 +33,34 @@ Authentication uses the **`secret`** query parameter (API key from Tools → API
 
 ## Setup
 
+### Local dev URL vs tunnel (Mac)
+
+The Remix/Vite dev server binds to **`http://127.0.0.1:3000`** by default (`PORT` in `vite.config.ts`; override with env var `PORT`).
+
+Shopify’s **embedded admin** and OAuth require a **public HTTPS URL**, not raw localhost. When you run:
+
+```bash
+shopify app dev
+```
+
+the CLI starts a **tunnel** (e.g. Cloudflare/ngrok) and prints the **Preview / app URL** in the terminal. That HTTPS URL is what Shopify uses—use it for `SHOPIFY_APP_URL` and as the app’s base URL during that session.
+
+If you use your **own** tunnel (ngrok, Cloudflare Tunnel, etc.), point it at **`localhost:3000`** (or whatever `PORT` you set), then use the tunnel’s `https://…` URL everywhere Shopify asks for an app URL.
+
+**Git / `shopify.app.toml`:** Keep **`application_url = "https://shopify.whatssms.io"`** (production) in the committed `shopify.app.toml`. Do **not** commit short-lived free ngrok URLs that change every run—they will confuse teammates and CI.
+
+Recommended pattern:
+
+1. Copy `shopify.app.dev.toml.example` → **`shopify.app.dev.toml`** (this file is **gitignored**).
+2. Set `application_url` and `[auth].redirect_urls` to your **stable dev tunnel** (paid ngrok reserved domain, Cloudflare Tunnel hostname, etc.).
+3. Run dev with that config:
+
+   ```bash
+   shopify app dev --config shopify.app.dev.toml
+   ```
+
+4. Deploy production config when releasing: `shopify app deploy` using the default `shopify.app.toml`.
+
 ### Requirements
 
 - Node `>=20.19` (per `package.json` engines).
