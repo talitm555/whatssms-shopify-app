@@ -11,7 +11,12 @@ import { authenticate } from "../shopify.server";
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const url = new URL(request.url);
+  // Webhooks are registered as `{application_url}/webhooks/…` → `/app/webhooks/…` when `application_url` ends with `/app`.
+  // Those routes must not run embedded admin session auth (Shopify signs webhook POSTs separately).
+  if (!url.pathname.startsWith("/app/webhooks")) {
+    await authenticate.admin(request);
+  }
 
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
 };
