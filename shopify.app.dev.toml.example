@@ -1,9 +1,12 @@
-# Copy to shopify.app.dev.toml (gitignored) and set YOUR_DEV_HTTPS_HOST.
-# Redirect URLs must match @shopify/shopify-app-remix auth routes (see shopify.server.ts authPathPrefix).
+# Copy to shopify.app.dev.toml (gitignored).
+# Dev: public URL via Cloudflare Tunnel (e.g. https://shopify.talitmahmood.com) → 127.0.0.1:3150 (see .env PORT).
+# Prod uses shopify.app.toml (https://shopify.whatssms.io).
+# application_url should include `/app` so the admin iframe loads the authenticated shell directly.
+# [auth].redirect_urls use the same origin (no /app): /auth/callback, /auth/session-token.
 
 client_id = "YOUR_CLIENT_ID"
 name = "WhatsSMS.io"
-application_url = "https://YOUR_DEV_HTTPS_HOST"
+application_url = "https://YOUR_DEV_HTTPS_HOST/app"
 embedded = true
 
 [webhooks]

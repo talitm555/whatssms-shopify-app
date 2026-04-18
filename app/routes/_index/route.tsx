@@ -21,8 +21,13 @@ export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
+  const isEmbedded = url.searchParams.get("embedded") === "1";
+  const shop = url.searchParams.get("shop");
 
-  if (url.searchParams.get("shop")) {
+  // Embedded admin loads the app URL with `embedded=1` + `shop` + session params on `/`.
+  // App Bridge navigation expects a real app route (e.g. `/app`), not `/`, or you can see
+  // client-side "Invalid path /" in the iframe.
+  if (isEmbedded || shop) {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 

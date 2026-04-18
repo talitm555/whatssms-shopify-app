@@ -33,41 +33,29 @@ Authentication uses the **`secret`** query parameter (API key from Tools → API
 
 ## Setup
 
-### Local dev URL vs tunnel (Mac)
+### Development vs production URLs
 
-The Remix/Vite server uses **`PORT`** from the environment (`vite.config.ts`; often `3000` when you run Vite alone). When you use **`shopify app dev`**, the CLI also starts a **proxy** and may choose a **random localhost port**—check the terminal line **`Proxy server started on port …`**. If your Cloudflare (or other) tunnel targets **`http://127.0.0.1:3000`** but the proxy is on another port, **nothing will answer on 3000**.
+| Environment | App URL (browser / `SHOPIFY_APP_URL`) | Config file |
+|-------------|----------------------------------------|-------------|
+| **Development** | `https://shopify.talitmahmood.com` — set **`SHOPIFY_APP_URL`** to that origin (no `/app` path). Partner **`application_url`** should be `https://shopify.talitmahmood.com/app` so the iframe loads `/app`. | `shopify.app.dev.toml` (gitignored; copy from `shopify.app.dev.toml.example`) |
+| **Production** | `https://shopify.whatssms.io` — same pattern: **`application_url`** = `https://shopify.whatssms.io/app` in `shopify.app.toml`. | `shopify.app.toml` |
 
-**Stable port for an external tunnel (recommended):** pin the CLI to port 3000 and pass your already-running tunnel URL:
+**Local dev workflow**
 
-```bash
-shopify app dev --config shopify.app.dev.toml --localhost-port 3000 --tunnel-url https://YOUR_TUNNEL_HOST
-```
-
-Start the tunnel first so it forwards to **`127.0.0.1:3000`**, then run the command above. Alternatively, point the tunnel at the **proxy port** printed in the terminal (no need for 3000).
-
-Shopify’s **embedded admin** and OAuth require a **public HTTPS URL**, not raw localhost. When you run:
-
-```bash
-shopify app dev
-```
-
-the CLI may start its own tunnel or use yours; the **app home** line shows which URL the dev session uses. Use that for `SHOPIFY_APP_URL` during the session.
-
-**Git / `shopify.app.toml`:** Keep **`application_url = "https://shopify.whatssms.io"`** (production) in the committed `shopify.app.toml`. Do **not** commit short-lived free ngrok URLs that change every run—they will confuse teammates and CI.
-
-Recommended pattern:
-
-1. Copy **`shopify.app.dev.toml.example`** → **`shopify.app.dev.toml`** (gitignored).
-2. Set **`application_url`** to your **stable dev HTTPS host** (Cloudflare Tunnel, reserved ngrok domain, etc.). Under **`[auth].redirect_urls`**, list exactly these two URLs (same host as `application_url`): **`…/auth/callback`** and **`…/auth/session-token`**—they match `@shopify/shopify-app-remix` with `authPathPrefix: "/auth"`.
-3. Run dev with that config. If you use your **own** tunnel, pin localhost and pass the tunnel URL:
+1. **Cloudflare Tunnel** exposes your machine to **`https://shopify.talitmahmood.com`** and forwards HTTP to **`127.0.0.1:3150`** (fixed port; override with `PORT` in `.env` if you change it).
+2. **`.env`**: set `PORT=3150` and `SHOPIFY_APP_URL=https://shopify.talitmahmood.com` so Vite HMR matches the hostname you use in the browser.
+3. Run **`npm run dev`** or, if you pass **`--tunnel-url`**, use **`https://<your-tunnel-host>:<LOCAL_PORT>`** where **`LOCAL_PORT` matches `--localhost-port`** (e.g. **3150**). The CLI requires a `:port` in the URL, and it uses that port to **listen locally** — do **not** use **`:443`** here (binding to port 443 needs root and causes `EACCES` on macOS). Merchants still use normal HTTPS on 443 via Cloudflare; only this flag’s port is local.
 
    ```bash
-   shopify app dev --config shopify.app.dev.toml --localhost-port 3000 --tunnel-url https://YOUR_DEV_HOST
+   shopify app dev --config shopify.app.dev.toml --localhost-port 3150 --tunnel-url https://shopify.talitmahmood.com:3150
    ```
 
-   If the CLI manages the tunnel for you, `shopify app dev --config shopify.app.dev.toml` is enough—just aim your external tunnel at the **proxy port** from the terminal if you are not using `--localhost-port 3000`.
+   Often you can **omit `--tunnel-url`** and rely on `shopify.app.dev.toml` + your running Cloudflare tunnel to `127.0.0.1:3150`.
+4. Open the app **only** via **`https://shopify.talitmahmood.com`** (embedded admin or that URL). Do not rely on `https://localhost:…` for this project’s dev setup.
 
-4. Deploy production config when releasing: `shopify app deploy` using the default `shopify.app.toml`.
+Under **`[auth].redirect_urls`** in the dev TOML, include **`https://shopify.talitmahmood.com/auth/callback`** and **`https://shopify.talitmahmood.com/auth/session-token`** (same host as `application_url`).
+
+**Production:** keep **`application_url = "https://shopify.whatssms.io"`** in committed `shopify.app.toml`. Deploy with `shopify app deploy`.
 
 ### Requirements
 
@@ -80,8 +68,7 @@ Copy `.env.example` to `.env` and fill:
 
 | Variable | Purpose |
 |----------|---------|
-| `PORT` | Local dev server port (default `3000`). Used by Vite and by `npm run dev` → `shopify app dev --localhost-port`. |
-| `VITE_HMR_TUNNEL` | Set to `1` only if you open the app in the browser via your **tunnel hostname** (not `https://localhost:PORT`). If unset, Vite HMR targets `https://localhost:<PORT>` so `shopify app dev`’s HTTPS proxy works (avoids a blank page). |
+| `PORT` | Local port Vite binds to (default **3150**). Cloudflare Tunnel should forward to `http://127.0.0.1:$PORT`. Also passed to `shopify app dev --localhost-port` via `npm run dev`. |
 | `DATABASE_URL` | SQLite dev: `file:./dev.sqlite` (use Postgres in production). |
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | From Partner Dashboard. |
 | `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts). |

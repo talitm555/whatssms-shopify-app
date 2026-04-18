@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Loads `.env` from the app root (minimal parser) so `PORT` applies to
- * `shopify app dev --localhost-port` without extra dependencies.
+ * Loads `.env` so `PORT` applies to `shopify app dev --localhost-port`.
+ * Default port 3150 — point Cloudflare Tunnel at `http://127.0.0.1:3150`.
  * Usage: npm run dev [-- extra shopify args]
  */
 import { spawn } from "node:child_process";
@@ -31,7 +31,7 @@ if (existsSync(envPath)) {
   }
 }
 
-const port = process.env.PORT || "3000";
+const port = process.env.PORT || "3150";
 const extra = process.argv.slice(2);
 
 const child = spawn(

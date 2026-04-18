@@ -2,7 +2,8 @@
 
 client_id = "bc7662d24244b8f7f5afd69e0e5ab1d3"
 name = "WhatsSMS.io"
-application_url = "https://shopify.whatssms.io"
+# Load the embedded shell on `/app` (see app/routes/app.tsx). OAuth redirect URLs stay `/auth/*` on the same host.
+application_url = "https://shopify.whatssms.io/app"
 embedded = true
 
 [webhooks]

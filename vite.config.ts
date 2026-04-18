@@ -5,6 +5,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 installGlobals({ nativeFetch: true });
 
+/**
+ * Dev: open the app only via your public URL (e.g. Cloudflare tunnel → `SHOPIFY_APP_URL`).
+ * HMR uses `wss` to that host (HTTPS / 443). Vite listens on `PORT` (default 3150) for the tunnel to forward to.
+ * Prod: `SHOPIFY_APP_URL` on the server matches `shopify.app.toml` (`https://shopify.whatssms.io`).
+ */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
@@ -22,18 +27,11 @@ export default defineConfig(({ mode }) => {
   const shopifyUrl = shopifyAppUrl || "http://localhost";
   const host = new URL(shopifyUrl).hostname;
 
-  // Visiting http://127.0.0.1 while SHOPIFY_APP_URL uses "localhost" must still
-  // be allowed or Vite can block the Host header and break CSS/asset URLs.
-  const allowedHosts = [...new Set([host, "localhost", "127.0.0.1"])];
+  // Tunnel / proxies may send Host that does not exactly match `host` (or vary by hop).
+  // Restrictive allowedHosts breaks HTML/asset responses and surfaces confusing client errors.
+  const allowedHosts = true;
 
-  const devPort = Number(env.PORT || process.env.PORT || 3000);
-
-  // `shopify app dev` serves the app at https://localhost:PORT (CLI proxy + cert)
-  // while SHOPIFY_APP_URL in .env is often your public tunnel host. If HMR targets
-  // that remote host, the Vite client on https://localhost:PORT cannot connect → blank/black page.
-  // Set VITE_HMR_TUNNEL=1 only when you open the dev server via that tunnel URL (not the CLI proxy).
-  const useRemoteTunnelHmr =
-    env.VITE_HMR_TUNNEL === "1" || process.env.VITE_HMR_TUNNEL === "1";
+  const devPort = Number(env.PORT || process.env.PORT || 3150);
 
   let hmrConfig;
   if (host === "localhost" || host === "127.0.0.1") {
@@ -42,13 +40,6 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 64999,
       clientPort: 64999,
-    };
-  } else if (!useRemoteTunnelHmr) {
-    hmrConfig = {
-      protocol: "wss" as const,
-      host: "localhost",
-      port: devPort,
-      clientPort: devPort,
     };
   } else {
     hmrConfig = {
@@ -66,12 +57,6 @@ export default defineConfig(({ mode }) => {
         preflightContinue: true,
       },
       port: devPort,
-      // Correct absolute asset URLs when the browser origin is https://localhost:PORT (Shopify proxy).
-      ...(!useRemoteTunnelHmr &&
-        host !== "localhost" &&
-        host !== "127.0.0.1" && {
-          origin: `https://localhost:${devPort}`,
-        }),
       hmr: hmrConfig,
       fs: {
         allow: ["app", "node_modules"],
