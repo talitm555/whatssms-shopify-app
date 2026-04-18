@@ -20,6 +20,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
+import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 const DEFAULT_WHATSSMS_BASE = "https://app.whatssms.io";
@@ -144,6 +145,56 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return { ok: true as const };
 };
 
+type SettingsFormValues = {
+  apiSecret: string;
+  whatssmsApiBaseUrl: string;
+  defaultSmsMode: string;
+  defaultSmsDeviceId: string;
+  defaultWaAccountId: string;
+  codEnabled: boolean;
+  codSendSms: boolean;
+  codSendWhatsapp: boolean;
+  codSmsTemplate: string;
+  codWaTemplate: string;
+  codLinkTtlHours: string;
+  codGatewayHints: string;
+  marketingRequiresSmsConsent: boolean;
+};
+
+function formValuesFromLoader(
+  row: Awaited<ReturnType<typeof loader>>["settings"],
+): SettingsFormValues {
+  const d = row || {
+    whatssmsApiBaseUrl: "",
+    defaultSmsMode: "devices",
+    defaultSmsDeviceId: "",
+    defaultWaAccountId: "",
+    codEnabled: true,
+    codSendSms: true,
+    codSendWhatsapp: false,
+    codSmsTemplate: "",
+    codWaTemplate: "",
+    codLinkTtlHours: 72,
+    codGatewayHints: "",
+    marketingRequiresSmsConsent: true,
+  };
+  return {
+    apiSecret: "",
+    whatssmsApiBaseUrl: d.whatssmsApiBaseUrl,
+    defaultSmsMode: d.defaultSmsMode,
+    defaultSmsDeviceId: d.defaultSmsDeviceId,
+    defaultWaAccountId: d.defaultWaAccountId,
+    codEnabled: d.codEnabled,
+    codSendSms: d.codSendSms,
+    codSendWhatsapp: d.codSendWhatsapp,
+    codSmsTemplate: d.codSmsTemplate,
+    codWaTemplate: d.codWaTemplate,
+    codLinkTtlHours: String(d.codLinkTtlHours),
+    codGatewayHints: d.codGatewayHints,
+    marketingRequiresSmsConsent: d.marketingRequiresSmsConsent,
+  };
+}
+
 export default function SettingsPage() {
   const { settings, defaultApiBase } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -166,6 +217,18 @@ export default function SettingsPage() {
     codGatewayHints: "",
     marketingRequiresSmsConsent: true,
   };
+
+  const [form, setForm] = useState<SettingsFormValues>(() => formValuesFromLoader(settings));
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...formValuesFromLoader(settings),
+      apiSecret: prev.apiSecret,
+    }));
+  }, [settings]);
+
+  const set = (patch: Partial<SettingsFormValues>) =>
+    setForm((f) => ({ ...f, ...patch }));
 
   return (
     <Page>
@@ -211,6 +274,8 @@ export default function SettingsPage() {
                     name="apiSecret"
                     type="password"
                     autoComplete="off"
+                    value={form.apiSecret}
+                    onChange={(v) => set({ apiSecret: v })}
                     helpText={
                       d.hasSecret ? "Leave blank to keep the existing secret." : "Required on first save."
                     }
@@ -218,7 +283,8 @@ export default function SettingsPage() {
                   <TextField
                     label="API base URL (optional)"
                     name="whatssmsApiBaseUrl"
-                    defaultValue={d.whatssmsApiBaseUrl}
+                    value={form.whatssmsApiBaseUrl}
+                    onChange={(v) => set({ whatssmsApiBaseUrl: v })}
                     autoComplete="off"
                     placeholder={defaultApiBase}
                   />
@@ -226,8 +292,8 @@ export default function SettingsPage() {
                 <InlineStack gap="200">
                   <Button
                     disabled={busy}
-                    onClick={(e) => {
-                      e.preventDefault();
+                    submit={false}
+                    onClick={() => {
                       const el = document.getElementById("settings-form") as HTMLFormElement | null;
                       if (!el) return;
                       const fd = new FormData(el);
@@ -255,18 +321,21 @@ export default function SettingsPage() {
                       { label: "Android devices", value: "devices" },
                       { label: "Credits / gateway", value: "credits" },
                     ]}
-                    defaultValue={d.defaultSmsMode}
+                    value={form.defaultSmsMode}
+                    onChange={(v) => set({ defaultSmsMode: v })}
                   />
                   <TextField
                     label="Default SMS device ID"
                     name="defaultSmsDeviceId"
-                    defaultValue={d.defaultSmsDeviceId}
+                    value={form.defaultSmsDeviceId}
+                    onChange={(v) => set({ defaultSmsDeviceId: v })}
                     autoComplete="off"
                   />
                   <TextField
                     label="Default WhatsApp account ID"
                     name="defaultWaAccountId"
-                    defaultValue={d.defaultWaAccountId}
+                    value={form.defaultWaAccountId}
+                    onChange={(v) => set({ defaultWaAccountId: v })}
                     autoComplete="off"
                   />
                 </FormLayout>
@@ -279,11 +348,23 @@ export default function SettingsPage() {
                   COD confirmation
                 </Text>
                 <label style={{ display: "block" }}>
-                  <input type="checkbox" name="codEnabled" value="on" defaultChecked={d.codEnabled} />{" "}
+                  <input
+                    type="checkbox"
+                    name="codEnabled"
+                    value="on"
+                    checked={form.codEnabled}
+                    onChange={(e) => set({ codEnabled: e.currentTarget.checked })}
+                  />{" "}
                   Enable COD flow
                 </label>
                 <label style={{ display: "block" }}>
-                  <input type="checkbox" name="codSendSms" value="on" defaultChecked={d.codSendSms} />{" "}
+                  <input
+                    type="checkbox"
+                    name="codSendSms"
+                    value="on"
+                    checked={form.codSendSms}
+                    onChange={(e) => set({ codSendSms: e.currentTarget.checked })}
+                  />{" "}
                   Send SMS link
                 </label>
                 <label style={{ display: "block" }}>
@@ -291,34 +372,39 @@ export default function SettingsPage() {
                     type="checkbox"
                     name="codSendWhatsapp"
                     value="on"
-                    defaultChecked={d.codSendWhatsapp}
+                    checked={form.codSendWhatsapp}
+                    onChange={(e) => set({ codSendWhatsapp: e.currentTarget.checked })}
                   />{" "}
                   Send WhatsApp link
                 </label>
                 <TextField
                   label="SMS template"
                   name="codSmsTemplate"
-                  defaultValue={d.codSmsTemplate}
+                  value={form.codSmsTemplate}
+                  onChange={(v) => set({ codSmsTemplate: v })}
                   multiline={4}
                   autoComplete="off"
                 />
                 <TextField
                   label="WhatsApp template"
                   name="codWaTemplate"
-                  defaultValue={d.codWaTemplate}
+                  value={form.codWaTemplate}
+                  onChange={(v) => set({ codWaTemplate: v })}
                   multiline={4}
                   autoComplete="off"
                 />
                 <TextField
                   label="Link validity (hours)"
                   name="codLinkTtlHours"
-                  defaultValue={String(d.codLinkTtlHours)}
+                  value={form.codLinkTtlHours}
+                  onChange={(v) => set({ codLinkTtlHours: v })}
                   autoComplete="off"
                 />
                 <TextField
                   label="Extra COD gateway hints"
                   name="codGatewayHints"
-                  defaultValue={d.codGatewayHints}
+                  value={form.codGatewayHints}
+                  onChange={(v) => set({ codGatewayHints: v })}
                   autoComplete="off"
                   helpText="Comma-separated substrings to match payment gateway names."
                 />
@@ -331,7 +417,8 @@ export default function SettingsPage() {
                   type="checkbox"
                   name="marketingRequiresSmsConsent"
                   value="on"
-                  defaultChecked={d.marketingRequiresSmsConsent}
+                  checked={form.marketingRequiresSmsConsent}
+                  onChange={(e) => set({ marketingRequiresSmsConsent: e.currentTarget.checked })}
                 />{" "}
                 Require SMS marketing consent when Shopify includes it on the payload
               </label>

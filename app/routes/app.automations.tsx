@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import type { SerializeFrom } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   BlockStack,
@@ -11,6 +12,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
+import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 
@@ -72,6 +74,81 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return { ok: true as const };
 };
 
+type AutomationRowData = SerializeFrom<typeof loader>["map"][string];
+
+function AutomationCard({
+  fieldKey,
+  label,
+  row,
+}: {
+  fieldKey: (typeof KEYS)[number]["key"];
+  label: string;
+  row: AutomationRowData | undefined;
+}) {
+  const [template, setTemplate] = useState(row?.template || "");
+  const [smsMode, setSmsMode] = useState(row?.smsMode || "devices");
+  const [smsDevice, setSmsDevice] = useState(row?.smsDevice || "");
+  const [waAccount, setWaAccount] = useState(row?.waAccount || "");
+
+  useEffect(() => {
+    setTemplate(row?.template || "");
+    setSmsMode(row?.smsMode || "devices");
+    setSmsDevice(row?.smsDevice || "");
+    setWaAccount(row?.waAccount || "");
+  }, [row]);
+
+  return (
+    <Card>
+      <BlockStack gap="300">
+        <Text as="h2" variant="headingMd">
+          {label}
+        </Text>
+        <label>
+          <input type="checkbox" name={`${fieldKey}_enabled`} value="on" defaultChecked={row?.enabled} />{" "}
+          Enabled
+        </label>
+        <label>
+          <input type="checkbox" name={`${fieldKey}_sms`} value="on" defaultChecked={row?.sendSms} />{" "}
+          SMS
+        </label>
+        <label>
+          <input type="checkbox" name={`${fieldKey}_wa`} value="on" defaultChecked={row?.sendWa} />{" "}
+          WhatsApp
+        </label>
+        <TextField
+          label="Template"
+          name={`${fieldKey}_template`}
+          value={template}
+          onChange={setTemplate}
+          multiline={3}
+          autoComplete="off"
+        />
+        <TextField
+          label="SMS mode override (devices|credits)"
+          name={`${fieldKey}_smsMode`}
+          value={smsMode}
+          onChange={setSmsMode}
+          autoComplete="off"
+        />
+        <TextField
+          label="SMS device ID override"
+          name={`${fieldKey}_smsDevice`}
+          value={smsDevice}
+          onChange={setSmsDevice}
+          autoComplete="off"
+        />
+        <TextField
+          label="WhatsApp account ID override"
+          name={`${fieldKey}_waAccount`}
+          value={waAccount}
+          onChange={setWaAccount}
+          autoComplete="off"
+        />
+      </BlockStack>
+    </Card>
+  );
+}
+
 export default function AutomationsPage() {
   const { map } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -91,55 +168,9 @@ export default function AutomationsPage() {
         </Banner>
         {actionData?.ok && <Banner tone="success">Saved.</Banner>}
         <Form method="post">
-          {KEYS.map(({ key, label }) => {
-            const row = map[key];
-            return (
-              <Card key={key}>
-                <BlockStack gap="300">
-                  <Text as="h2" variant="headingMd">
-                    {label}
-                  </Text>
-                  <label>
-                    <input type="checkbox" name={`${key}_enabled`} value="on" defaultChecked={row?.enabled} />{" "}
-                    Enabled
-                  </label>
-                  <label>
-                    <input type="checkbox" name={`${key}_sms`} value="on" defaultChecked={row?.sendSms} />{" "}
-                    SMS
-                  </label>
-                  <label>
-                    <input type="checkbox" name={`${key}_wa`} value="on" defaultChecked={row?.sendWa} />{" "}
-                    WhatsApp
-                  </label>
-                  <TextField
-                    label="Template"
-                    name={`${key}_template`}
-                    defaultValue={row?.template || ""}
-                    multiline={3}
-                    autoComplete="off"
-                  />
-                  <TextField
-                    label="SMS mode override (devices|credits)"
-                    name={`${key}_smsMode`}
-                    defaultValue={row?.smsMode || "devices"}
-                    autoComplete="off"
-                  />
-                  <TextField
-                    label="SMS device ID override"
-                    name={`${key}_smsDevice`}
-                    defaultValue={row?.smsDevice || ""}
-                    autoComplete="off"
-                  />
-                  <TextField
-                    label="WhatsApp account ID override"
-                    name={`${key}_waAccount`}
-                    defaultValue={row?.waAccount || ""}
-                    autoComplete="off"
-                  />
-                </BlockStack>
-              </Card>
-            );
-          })}
+          {KEYS.map(({ key, label }) => (
+            <AutomationCard key={key} fieldKey={key} label={label} row={map[key]} />
+          ))}
           <Box paddingBlockEnd="400">
             <Button submit variant="primary" loading={busy}>
               Save automations
