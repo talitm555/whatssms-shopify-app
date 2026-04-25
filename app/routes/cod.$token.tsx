@@ -40,13 +40,45 @@ function noteBlock(args: {
   ua: string | null;
   lang: string | null;
   ref: string | null;
+  at: Date;
 }): string {
+  const uaRaw = (args.ua || "").slice(0, 300);
+  const isWhatsapp = args.channel === "whatsapp";
+  const decisionLabel = args.decision === "confirm" ? "Confirmed" : "Rejected";
+  const channelLabel = isWhatsapp ? "WhatsApp" : "SMS";
+  const os = (() => {
+    if (/Windows NT/i.test(uaRaw)) return "Windows";
+    if (/Android/i.test(uaRaw)) return "Android";
+    if (/(iPhone|iPad|iPod)/i.test(uaRaw)) return "iOS";
+    if (/Mac OS X|Macintosh/i.test(uaRaw)) return "macOS";
+    if (/Linux/i.test(uaRaw)) return "Linux";
+    return "Unknown OS";
+  })();
+  const browser = (() => {
+    const pick = (name: string, re: RegExp): string | null => {
+      const m = uaRaw.match(re);
+      if (!m?.[1]) return null;
+      return `${name} ${m[1]}`;
+    };
+    return (
+      pick("Edge", /Edg\/(\d+(?:\.\d+)?)/i) ||
+      pick("Chrome", /Chrome\/(\d+(?:\.\d+)?)/i) ||
+      pick("Firefox", /Firefox\/(\d+(?:\.\d+)?)/i) ||
+      pick("Safari", /Version\/(\d+(?:\.\d+)?).*Safari/i) ||
+      "Unknown Browser"
+    );
+  })();
+  const when = args.at.toISOString().replace("T", " ").slice(0, 19);
   const lines = [
-    `[WhatsSMS COD] ${args.decision} via ${args.channel}`,
+    `[WhatsSMS COD]`,
+    `${decisionLabel} via ${channelLabel}`,
     `IP: ${args.ip || "—"}`,
-    `UA: ${(args.ua || "—").slice(0, 200)}`,
-    `Lang: ${args.lang || "—"}`,
-    `Referer: ${(args.ref || "—").slice(0, 200)}`,
+    `Device: ${os}`,
+    `Browser: ${browser}`,
+    `DateTime: ${when} UTC`,
+    `Language: ${args.lang || "—"}`,
+    `Link: ${(args.ref || "—").slice(0, 300)}`,
+    `User-Agent: ${uaRaw || "—"}`,
   ];
   return lines.join("\n");
 }
@@ -70,6 +102,7 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
       action: row.resolvedAction as "confirm" | "reject",
       shop: row.shop,
       channel,
+      resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
     };
   }
 
@@ -105,6 +138,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   }
 
   const meta = clientMetaFromRequest(request);
+  const decidedAt = new Date();
   const tag = confirmationTagForChannel(channel, decision as "confirm" | "reject");
 
   const updated = await prisma.codToken.updateMany({
@@ -114,7 +148,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     },
     data: {
       resolvedAction: String(decision),
-      resolvedAt: new Date(),
+      resolvedAt: decidedAt,
       decisionIp: meta.decisionIp,
       decisionUserAgent: meta.decisionUserAgent,
       decisionLanguage: meta.decisionLanguage,
@@ -136,6 +170,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     ua: meta.decisionUserAgent,
     lang: meta.decisionLanguage,
     ref: meta.decisionReferer,
+    at: decidedAt,
   });
 
   await appendOrderMerchantNote(admin, row.orderGid, staffBits);
@@ -165,11 +200,28 @@ export default function CodConfirmPage() {
   }
 
   if (data.status === "done") {
+    const actionWord = data.action === "confirm" ? "confirmed" : "rejected";
+    const actionTone = data.action === "confirm" ? "#008060" : "#d72c0d";
     return (
       <div className="cod-page">
+        <style>{`
+          .cod-page { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f6f6f7; min-height: 100vh; padding: 24px 16px; }
+          .cod-card { max-width: 560px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 24px; }
+          .cod-badge { display: inline-block; padding: 6px 10px; border-radius: 999px; color: #fff; font-weight: 600; font-size: .85rem; margin-bottom: 12px; }
+          .cod-muted { color: #555; font-size: 0.95rem; margin: 6px 0; }
+        `}</style>
         <div className="cod-card">
+          <span className="cod-badge" style={{ background: actionTone }}>
+            Response recorded
+          </span>
           <h1>Thank you</h1>
-          <p>Your response has been recorded.</p>
+          <p className="cod-muted">
+            Your order has been {actionWord} successfully.
+          </p>
+          <p className="cod-muted">Store: {data.shop}</p>
+          {data.resolvedAt ? (
+            <p className="cod-muted">DateTime: {new Date(data.resolvedAt).toLocaleString()}</p>
+          ) : null}
         </div>
       </div>
     );

@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form as RemixForm, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   Banner,
   BlockStack,
@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Collapsible,
-  Form,
   Page,
   Text,
   TextField,
@@ -70,10 +69,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
-  const existing = await prisma.shopSettings.findUnique({ where: { shop } });
-  if (!existing?.encryptedWhatssmsSecret) {
-    return { ok: false as const, error: "Save a WhatsSMS API key on the Connection page first." };
-  }
 
   const form = await request.formData();
   const codEnabled = form.get("codEnabled") === "on";
@@ -84,9 +79,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const codLinkTtlHours = Number(form.get("codLinkTtlHours") || 72);
   const codGatewayHints = String(form.get("codGatewayHints") || "").trim();
 
-  await prisma.shopSettings.update({
+  const existing = await prisma.shopSettings.findUnique({ where: { shop } });
+  await prisma.shopSettings.upsert({
     where: { shop },
-    data: {
+    create: {
+      shop,
+      encryptedWhatssmsSecret: existing?.encryptedWhatssmsSecret ?? null,
+      whatssmsApiBaseUrl: existing?.whatssmsApiBaseUrl ?? null,
+      codEnabled,
+      codSendSms,
+      codSendWhatsapp,
+      codSmsTemplate,
+      codWaTemplate,
+      codLinkTtlHours: Number.isFinite(codLinkTtlHours) ? codLinkTtlHours : 72,
+      codGatewayHints: codGatewayHints || null,
+    },
+    update: {
       codEnabled,
       codSendSms,
       codSendWhatsapp,
@@ -102,7 +110,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function CodSettingsPage() {
   const d = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+  const actionData = useActionData<typeof action>() as
+    | { ok?: boolean; error?: string }
+    | undefined;
   const nav = useNavigation();
   const busy = nav.state !== "idle";
   const [open, setOpen] = useState(false);
@@ -152,7 +162,7 @@ export default function CodSettingsPage() {
               </Link>{" "}
               page.
             </Text>
-            <Button plain onClick={toggle} ariaExpanded={open} ariaControls="cod-placeholders-collapsible">
+            <Button variant="plain" onClick={toggle} ariaExpanded={open} ariaControls="cod-placeholders-collapsible">
               {open ? "Hide" : "Show"} quick placeholder reference
             </Button>
             <Collapsible open={open} id="cod-placeholders-collapsible">
@@ -170,7 +180,7 @@ export default function CodSettingsPage() {
           </BlockStack>
         </Banner>
 
-        <Form method="post">
+        <RemixForm method="post">
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
@@ -242,11 +252,11 @@ export default function CodSettingsPage() {
             </BlockStack>
           </Card>
           <Box paddingBlockStart="400">
-            <Button submit variant="primary" loading={busy} disabled={!d.hasSecret}>
+            <Button submit variant="primary" loading={busy}>
               Save COD Settings
             </Button>
           </Box>
-        </Form>
+        </RemixForm>
       </BlockStack>
     </Page>
   );
