@@ -23,6 +23,11 @@ import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { readWhatssmsEnvelope } from "../lib/whatssms-response.server";
+import {
+  formatUsageLimit,
+  labelForUsageKey,
+  sortUsageEntries,
+} from "../lib/whatssms-usage-labels";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "../lib/whatssms.server";
 
 function apiBase(): string {
@@ -40,9 +45,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const row = await prisma.shopSettings.findUnique({ where: { shop } });
   const hasSecret = Boolean(row?.encryptedWhatssmsSecret);
 
-  let connection: { ok: boolean; message: string; credits?: unknown } = {
+  let connection: {
+    ok: boolean;
+    message: string;
+    creditsDisplay: { amount: number; currency: string } | null;
+  } = {
     ok: false,
     message: "",
+    creditsDisplay: null,
   };
   let subscription: {
     ok: boolean;
@@ -58,15 +68,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     try {
       const creditsJson = await client.getCredits();
       const env = readWhatssmsEnvelope(creditsJson);
+      let creditsDisplay: { amount: number; currency: string } | null = null;
+      if (env.ok && env.data != null && typeof env.data === "object") {
+        const data = env.data as Record<string, unknown>;
+        const raw = data.credits;
+        const amount = typeof raw === "number" ? raw : Number(raw);
+        if (Number.isFinite(amount)) {
+          creditsDisplay = {
+            amount,
+            currency: String(data.currency ?? "USD"),
+          };
+        }
+      }
       connection = {
         ok: env.ok,
         message: env.ok ? "API responded successfully." : env.message || "Unexpected API response.",
-        credits: env.data,
+        creditsDisplay,
       };
     } catch (e) {
       connection = {
         ok: false,
         message: e instanceof Error ? e.message : String(e),
+        creditsDisplay: null,
       };
     }
     try {
@@ -88,7 +111,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     shop,
-    apiBaseDisplay: apiBase(),
     hasSecret,
     connection,
     subscription,
@@ -141,7 +163,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ConnectionPage() {
-  const { hasSecret, connection, subscription, apiBaseDisplay } = useLoaderData<typeof loader>();
+  const { hasSecret, connection, subscription } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const nav = useNavigation();
   const busy = nav.state !== "idle";
@@ -151,11 +173,12 @@ export default function ConnectionPage() {
     if (actionData && "ok" in actionData && actionData.ok) setApiKey("");
   }, [actionData]);
 
-  const usageRows = subscription.usage
-    ? Object.entries(subscription.usage).filter(
+  const usageEntries = subscription.usage
+    ? (Object.entries(subscription.usage).filter(
         ([, v]) => v && typeof v === "object" && "used" in v && "limit" in v,
-      )
+      ) as [string, { used?: number; limit?: number }][])
     : [];
+  sortUsageEntries(usageEntries);
 
   return (
     <Page>
@@ -221,13 +244,29 @@ export default function ConnectionPage() {
                 <Text as="p" variant="bodySm" tone="subdued">
                   {connection.message}
                 </Text>
-                {connection.credits != null && (
-                  <Text as="p" variant="bodySm">
-                    <code style={{ fontSize: 12 }}>{JSON.stringify(connection.credits)}</code>
-                  </Text>
-                )}
               </BlockStack>
             </Card>
+
+            {connection.ok && connection.creditsDisplay ? (
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingMd">
+                    Account Credits
+                  </Text>
+                  <Text as="p" variant="bodyMd">
+                    Credits:{" "}
+                    <strong>
+                      {connection.creditsDisplay.amount} {connection.creditsDisplay.currency}
+                    </strong>
+                  </Text>
+                  <Text as="p" variant="bodySm" tone="subdued">
+                    These credits apply when you send SMS through the WhatsSMS gateway (credits mode),
+                    not when messages are sent from your own paired Android device. Subscription quotas
+                    and per-feature limits are shown in the section below.
+                  </Text>
+                </BlockStack>
+              </Card>
+            ) : null}
 
             <Card>
               <BlockStack gap="300">
@@ -242,14 +281,14 @@ export default function ConnectionPage() {
                       Package: <strong>{subscription.packageName || "—"}</strong>
                     </Text>
                     <BlockStack gap="200">
-                      {usageRows.map(([key, v]) => {
+                      {usageEntries.map(([key, v]) => {
                         const used = Number(v?.used ?? 0);
                         const limit = Number(v?.limit ?? 0);
                         const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
                         return (
                           <Box key={key} paddingBlockEnd="100">
                             <Text as="p" variant="bodySm">
-                              {key.replace(/_/g, " ")} — {used} / {limit}
+                              {labelForUsageKey(key)} — {used} / {formatUsageLimit(limit)}
                             </Text>
                             {limit > 0 ? <ProgressBar progress={pct} size="small" /> : null}
                           </Box>

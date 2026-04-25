@@ -45,17 +45,17 @@ export default function NotificationsIndexPage() {
 
   return (
     <Page>
-      <TitleBar
-        title="Customer Notifications"
-        primaryAction={
-          canAdd
-            ? {
-                content: "New Notification",
-                onAction: () => navigate("/app/notifications/new"),
-              }
-            : undefined
-        }
-      />
+      <TitleBar title="Customer Notifications">
+        {canAdd ? (
+          <button
+            type="button"
+            variant="primary"
+            onClick={() => navigate("/app/notifications/new")}
+          >
+            New Notification
+          </button>
+        ) : null}
+      </TitleBar>
       <BlockStack gap="400">
         <Banner tone="info">
           <p>

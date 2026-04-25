@@ -54,8 +54,8 @@ export default function AboutPage() {
                   </Link>
                 </List.Item>
                 <List.Item>
-                  <Link url="mailto:support@whatssms.io" target="_blank" removeUnderline>
-                    support@whatssms.io
+                  <Link url="mailto:hello@whatssms.io" target="_blank" removeUnderline>
+                    hello@whatssms.io
                   </Link>
                 </List.Item>
               </List>
@@ -77,11 +77,7 @@ export default function AboutPage() {
                     Privacy policy
                   </Link>
                 </List.Item>
-                <List.Item>
-                  <Link url="https://whatssms.io/refund" target="_blank" removeUnderline>
-                    Refund policy
-                  </Link>
-                </List.Item>
+                
               </List>
             </BlockStack>
           </Card>

@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useActionData, useLoaderData } from "@remix-run/react";
+import { Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   Banner,
   BlockStack,
@@ -13,7 +13,7 @@ import {
   TextField,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { PLACEHOLDER_REFERENCE } from "../lib/placeholders";
@@ -25,6 +25,31 @@ Confirm or reject: {{confirm_url_sms}}`;
 const COD_SAMPLE_WA = `Hi {{customer_name}}, please confirm your COD order {{order_name}}
 ({{line_items_count}} item(s), total {{total}} {{currency}}).
 Confirm or reject: {{confirm_url_wa}}`;
+
+const DEFAULT_GATEWAY_HINTS = "Cash on Delivery, Bank Transfer";
+
+const LEGACY_SMS =
+  "Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_sms}}";
+const LEGACY_WA =
+  "Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_wa}}";
+
+function effectiveCodSmsTemplate(raw: string): string {
+  const t = raw.trim();
+  if (!t || t === LEGACY_SMS) return COD_SAMPLE_SMS;
+  return raw;
+}
+
+function effectiveCodWaTemplate(raw: string): string {
+  const t = raw.trim();
+  if (!t || t === LEGACY_WA) return COD_SAMPLE_WA;
+  return raw;
+}
+
+function effectiveGatewayHints(raw: string | null | undefined): string {
+  const t = (raw ?? "").trim();
+  if (!t) return DEFAULT_GATEWAY_HINTS;
+  return t;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -78,22 +103,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function CodSettingsPage() {
   const d = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const nav = useNavigation();
+  const busy = nav.state !== "idle";
   const [open, setOpen] = useState(false);
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
-  const smsDefault =
-    !d.codSmsTemplate ||
-    d.codSmsTemplate ===
-      "Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_sms}}"
-      ? COD_SAMPLE_SMS
-      : d.codSmsTemplate;
+  const [codEnabled, setCodEnabled] = useState(d.codEnabled);
+  const [codSendSms, setCodSendSms] = useState(d.codSendSms);
+  const [codSendWhatsapp, setCodSendWhatsapp] = useState(d.codSendWhatsapp);
+  const [codSmsTemplate, setCodSmsTemplate] = useState(() =>
+    effectiveCodSmsTemplate(d.codSmsTemplate),
+  );
+  const [codWaTemplate, setCodWaTemplate] = useState(() =>
+    effectiveCodWaTemplate(d.codWaTemplate),
+  );
+  const [codLinkTtlHours, setCodLinkTtlHours] = useState(String(d.codLinkTtlHours ?? 72));
+  const [codGatewayHints, setCodGatewayHints] = useState(() =>
+    effectiveGatewayHints(d.codGatewayHints),
+  );
 
-  const waDefault =
-    !d.codWaTemplate ||
-    d.codWaTemplate ===
-      "Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_wa}}"
-      ? COD_SAMPLE_WA
-      : d.codWaTemplate;
+  useEffect(() => {
+    setCodEnabled(d.codEnabled);
+    setCodSendSms(d.codSendSms);
+    setCodSendWhatsapp(d.codSendWhatsapp);
+    setCodSmsTemplate(effectiveCodSmsTemplate(d.codSmsTemplate));
+    setCodWaTemplate(effectiveCodWaTemplate(d.codWaTemplate));
+    setCodLinkTtlHours(String(d.codLinkTtlHours ?? 72));
+    setCodGatewayHints(effectiveGatewayHints(d.codGatewayHints));
+  }, [d]);
 
   return (
     <Page>
@@ -140,49 +177,73 @@ export default function CodSettingsPage() {
                 COD confirmation messages
               </Text>
               <label>
-                <input type="checkbox" name="codEnabled" value="on" defaultChecked={d.codEnabled} /> Enable
-                COD flow
+                <input
+                  type="checkbox"
+                  name="codEnabled"
+                  value="on"
+                  checked={codEnabled}
+                  onChange={(e) => setCodEnabled(e.currentTarget.checked)}
+                />{" "}
+                Enable COD flow
               </label>
               <label>
-                <input type="checkbox" name="codSendSms" value="on" defaultChecked={d.codSendSms} /> Send SMS
-                link
+                <input
+                  type="checkbox"
+                  name="codSendSms"
+                  value="on"
+                  checked={codSendSms}
+                  onChange={(e) => setCodSendSms(e.currentTarget.checked)}
+                />{" "}
+                Send SMS link
               </label>
               <label>
-                <input type="checkbox" name="codSendWhatsapp" value="on" defaultChecked={d.codSendWhatsapp} />{" "}
+                <input
+                  type="checkbox"
+                  name="codSendWhatsapp"
+                  value="on"
+                  checked={codSendWhatsapp}
+                  onChange={(e) => setCodSendWhatsapp(e.currentTarget.checked)}
+                />{" "}
                 Send WhatsApp link
               </label>
               <TextField
                 label="SMS template"
                 name="codSmsTemplate"
-                defaultValue={smsDefault}
+                value={codSmsTemplate}
+                onChange={setCodSmsTemplate}
                 multiline={5}
                 autoComplete="off"
               />
               <TextField
                 label="WhatsApp template"
                 name="codWaTemplate"
-                defaultValue={waDefault}
+                value={codWaTemplate}
+                onChange={setCodWaTemplate}
                 multiline={5}
                 autoComplete="off"
               />
               <TextField
                 label="Link validity (hours)"
                 name="codLinkTtlHours"
-                defaultValue={String(d.codLinkTtlHours)}
+                value={codLinkTtlHours}
+                onChange={setCodLinkTtlHours}
+                type="number"
                 autoComplete="off"
+                min={1}
               />
               <TextField
                 label="Extra COD gateway hints"
                 name="codGatewayHints"
-                defaultValue={d.codGatewayHints || ""}
+                value={codGatewayHints}
+                onChange={setCodGatewayHints}
                 autoComplete="off"
                 helpText="Comma-separated substrings to match payment gateway names."
               />
             </BlockStack>
           </Card>
           <Box paddingBlockStart="400">
-            <Button submit variant="primary" disabled={!d.hasSecret}>
-              Save COD settings
+            <Button submit variant="primary" loading={busy} disabled={!d.hasSecret}>
+              Save COD Settings
             </Button>
           </Box>
         </Form>

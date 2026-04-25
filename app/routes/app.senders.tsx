@@ -143,6 +143,7 @@ export default function SendersPage() {
         {actionData?.ok && <Banner tone="success">Default Sending Channels updated.</Banner>}
 
         <Form method="post">
+          <BlockStack gap="400">
           <input type="hidden" name="defaultSmsMode" value={smsMode} />
           <Card>
             <BlockStack gap="300">
@@ -224,11 +225,12 @@ export default function SendersPage() {
             </BlockStack>
           </Card>
 
-          <Box paddingBlockEnd="400">
+          <Box paddingBlockStart="200">
             <Button submit variant="primary" loading={busy} disabled={!d.hasSecret}>
-              Save senders
+              Save Senders
             </Button>
           </Box>
+          </BlockStack>
         </Form>
       </BlockStack>
     </Page>
