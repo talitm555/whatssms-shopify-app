@@ -125,7 +125,7 @@ export default function SendersPage() {
 
   return (
     <Page>
-      <TitleBar title="WhatsSMS.io Senders" />
+      <TitleBar title="Senders" />
       <BlockStack gap="400">
         {!d.hasSecret && (
           <Banner tone="warning" title="API key required">
@@ -140,18 +140,18 @@ export default function SendersPage() {
         {actionData && "error" in actionData && actionData.error && (
           <Banner tone="critical">{actionData.error}</Banner>
         )}
-        {actionData?.ok && <Banner tone="success">Sender defaults saved.</Banner>}
+        {actionData?.ok && <Banner tone="success">Default Sending Channels updated.</Banner>}
 
         <Form method="post">
           <input type="hidden" name="defaultSmsMode" value={smsMode} />
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
-                Default sending channels
+                Default Sending Channels
               </Text>
               <FormLayout>
                 <Select
-                  label="SMS mode"
+                  label="SMS Mode"
                   options={[
                     { label: "Android devices", value: "devices" },
                     { label: "Credits / gateway", value: "credits" },
@@ -160,7 +160,7 @@ export default function SendersPage() {
                   onChange={setSmsMode}
                 />
                 <Select
-                  label="Default SMS device"
+                  label="Default SMS Device"
                   options={smsDeviceOptions}
                   value={smsSelectValue}
                   onChange={(v) => {
@@ -182,7 +182,7 @@ export default function SendersPage() {
                   <input type="hidden" name="defaultSmsDeviceId" value={smsDevice} />
                 )}
                 <Select
-                  label="Default WhatsApp account"
+                  label="Default WhatsApp Account"
                   options={waOptions}
                   value={waSelectValue}
                   onChange={(v) => {
@@ -193,7 +193,7 @@ export default function SendersPage() {
                 />
                 {waSelectValue === "__custom__" ? (
                   <TextField
-                    label="WhatsApp account ID"
+                    label="WhatsApp Account ID"
                     name="defaultWaAccountId"
                     value={waAccount}
                     onChange={setWaAccount}

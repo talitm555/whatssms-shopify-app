@@ -59,8 +59,7 @@ export default function NotificationsIndexPage() {
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
-            Create one automation per Shopify event. Events already configured are hidden from the new
-            notification list.
+            Create one automation per Shopify event.
           </p>
         </Banner>
 

@@ -71,8 +71,8 @@ export default function App() {
         <a href="/app" rel="home">
           Home
         </a>
-        <a href="/app/connection">WhatsSMS.io Connection</a>
-        <a href="/app/senders">WhatsSMS.io Senders</a>
+        <a href="/app/connection">Connection</a>
+        <a href="/app/senders">Senders</a>
         <a href="/app/placeholders">Placeholders</a>
         <a href="/app/cod">COD Confirmations</a>
         <a href="/app/notifications">Customer Notifications</a>

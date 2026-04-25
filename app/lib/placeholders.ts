@@ -34,7 +34,6 @@ export const PLACEHOLDER_REFERENCE: ReadonlyArray<{
   { key: "{{shop_domain}}", description: "Shop domain (e.g. example.myshopify.com)." },
   { key: "{{confirm_url_sms}}", description: "COD confirmation link (SMS channel)." },
   { key: "{{confirm_url_wa}}", description: "COD confirmation link (WhatsApp channel)." },
-  { key: "{{confirm_url}}", description: "Same as SMS confirmation URL (legacy)." },
   { key: "{{tracking_number}}", description: "Shipment tracking number (fulfillment webhooks)." },
   { key: "{{tracking_url}}", description: "Primary tracking URL (fulfillment webhooks)." },
   { key: "{{tracking_company}}", description: "Carrier / tracking company name." },

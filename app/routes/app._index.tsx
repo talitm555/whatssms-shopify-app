@@ -52,7 +52,7 @@ export default function Index() {
                   )}
                 </InlineStack>
                 <InlineStack gap="300">
-                  <RemixLink to="/app/connection">WhatsSMS.io Connection</RemixLink>
+                  <RemixLink to="/app/connection">Connection</RemixLink>
                   <RemixLink to="/app/senders">Senders</RemixLink>
                   <RemixLink to="/app/cod">COD Confirmations</RemixLink>
                   <RemixLink to="/app/notifications">Customer Notifications</RemixLink>

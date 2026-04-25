@@ -159,12 +159,12 @@ export default function ConnectionPage() {
 
   return (
     <Page>
-      <TitleBar title="WhatsSMS.io Connection" />
+      <TitleBar title="Connection" />
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
             Create API keys in WhatsSMS under <strong>Tools → API Keys</strong>. Keys are encrypted at
-            rest. API host is fixed from environment: <code>{apiBaseDisplay}</code>
+            rest.
           </p>
         </Banner>
         {actionData && "error" in actionData && actionData.error && (
@@ -210,7 +210,7 @@ export default function ConnectionPage() {
               <BlockStack gap="300">
                 <InlineStack align="space-between" blockAlign="center">
                   <Text as="h2" variant="headingMd">
-                    API connection
+                    API Connection Status
                   </Text>
                   {connection.ok ? (
                     <Badge tone="success">Connected</Badge>
@@ -232,7 +232,7 @@ export default function ConnectionPage() {
             <Card>
               <BlockStack gap="300">
                 <Text as="h2" variant="headingMd">
-                  Subscription &amp; quota
+                  Subscription &amp; Quota Details
                 </Text>
                 {!subscription.ok ? (
                   <Banner tone="warning">{subscription.message || "Could not load subscription."}</Banner>
@@ -264,12 +264,12 @@ export default function ConnectionPage() {
             <Card>
               <BlockStack gap="300">
                 <Text as="h2" variant="headingMd">
-                  Rotate API key
+                  Rotate API Key
                 </Text>
                 <Form method="post">
                   <BlockStack gap="300">
                     <TextField
-                      label="New WhatsSMS API key"
+                      label="New WhatsSMS API Key"
                       name="apiSecret"
                       type="password"
                       autoComplete="off"
@@ -277,7 +277,7 @@ export default function ConnectionPage() {
                       onChange={setApiKey}
                     />
                     <Button submit variant="primary" loading={busy} disabled={!apiKey.trim()}>
-                      Update key
+                      Update API Key
                     </Button>
                   </BlockStack>
                 </Form>
