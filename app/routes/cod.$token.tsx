@@ -215,7 +215,7 @@ export default function CodConfirmPage() {
           {s.shopLogoUrl ? <img className="cod-logo" src={s.shopLogoUrl} alt="" /> : <div className="cod-logo" />}
           <div className="cod-shop">{s.shopName}</div>
         </div>
-        <h1 className="cod-h1">Confirm your cash on delivery order</h1>
+        <h1 className="cod-h1">Confirm your order</h1>
         <p className="cod-muted">
           Review your order below, then confirm or cancel. Order {s.orderName}
           {s.createdAt ? ` · ${new Date(s.createdAt).toLocaleString()}` : ""}
@@ -248,7 +248,9 @@ export default function CodConfirmPage() {
           <div className="cod-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <span style={{ marginBottom: 4 }}>Address</span>
             <span style={{ whiteSpace: "pre-line" }}>
-              {s.shippingAddressLines.length ? s.shippingAddressLines.join("\n") : "—"}
+              {s.shippingAddressLines.length
+                ? s.shippingAddressLines.join("\n")
+                : "Not shared by store privacy settings"}
             </span>
           </div>
         </div>
@@ -258,7 +260,9 @@ export default function CodConfirmPage() {
           <div className="cod-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <span style={{ marginBottom: 4 }}>Address</span>
             <span style={{ whiteSpace: "pre-line" }}>
-              {s.billingAddressLines.length ? s.billingAddressLines.join("\n") : "—"}
+              {s.billingAddressLines.length
+                ? s.billingAddressLines.join("\n")
+                : "Not shared by store privacy settings"}
             </span>
           </div>
         </div>

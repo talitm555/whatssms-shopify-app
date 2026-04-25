@@ -16,10 +16,12 @@ export function deviceSelectOptions(json: WhatssmsJson): { label: string; value:
   const out: { label: string; value: string }[] = [];
   for (const d of data) {
     const row = d as Record<string, unknown>;
-    const id = row.id != null ? String(row.id) : "";
-    if (!id) continue;
-    const name = row.name != null ? String(row.name) : `Device ${id}`;
-    out.push({ label: `${name} (ID ${id})`, value: id });
+    const uniqueId = row.unique != null ? String(row.unique) : "";
+    const fallbackId = row.id != null ? String(row.id) : "";
+    const senderId = uniqueId || fallbackId;
+    if (!senderId) continue;
+    const name = row.name != null ? String(row.name) : `Device ${senderId}`;
+    out.push({ label: `${name} (ID ${senderId})`, value: senderId });
   }
   return out;
 }
@@ -30,13 +32,15 @@ export function waAccountSelectOptions(json: WhatssmsJson): { label: string; val
   const out: { label: string; value: string }[] = [];
   for (const d of data) {
     const row = d as Record<string, unknown>;
-    const id = row.id != null ? String(row.id) : "";
-    if (!id) continue;
+    const uniqueId = row.unique != null ? String(row.unique) : "";
+    const fallbackId = row.id != null ? String(row.id) : "";
+    const senderId = uniqueId || fallbackId;
+    if (!senderId) continue;
     const phone = row.phone != null ? String(row.phone) : "";
     const status = row.status != null ? String(row.status) : "";
     out.push({
-      label: `${phone || "Account"} — ${status} (ID ${id})`,
-      value: id,
+      label: `${phone || "Account"} — ${status} (ID ${senderId})`,
+      value: senderId,
     });
   }
   return out;

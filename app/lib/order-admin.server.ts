@@ -90,19 +90,11 @@ export async function getOrderSummaryForCodPage(
   orderGid: string,
   shopDomain: string,
 ): Promise<CodOrderSummary | null> {
-  const res = await admin.graphql(
-    `#graphql
+  const fullQuery = `#graphql
     query OrderForCod($id: ID!) {
       shop {
         name
         primaryDomain { host }
-        brand {
-          logo {
-            image {
-              url
-            }
-          }
-        }
       }
       order(id: $id) {
         name
@@ -113,7 +105,6 @@ export async function getOrderSummaryForCodPage(
         displayFinancialStatus
         displayFulfillmentStatus
         note
-        statusPageUrl
         subtotalPriceSet { shopMoney { amount currencyCode } }
         totalShippingPriceSet { shopMoney { amount currencyCode } }
         totalTaxSet { shopMoney { amount currencyCode } }
@@ -123,9 +114,6 @@ export async function getOrderSummaryForCodPage(
           displayName
           firstName
           lastName
-          email
-          phone
-          defaultPhoneNumber { phoneNumber }
         }
         shippingAddress {
           name
@@ -168,15 +156,69 @@ export async function getOrderSummaryForCodPage(
           }
         }
       }
-    }`,
-    { variables: { id: orderGid } },
-  );
+    }`;
+  const fallbackQuery = `#graphql
+    query OrderForCod($id: ID!) {
+      shop {
+        name
+        primaryDomain { host }
+      }
+      order(id: $id) {
+        name
+        legacyResourceId
+        createdAt
+        email
+        phone
+        displayFinancialStatus
+        displayFulfillmentStatus
+        note
+        subtotalPriceSet { shopMoney { amount currencyCode } }
+        totalShippingPriceSet { shopMoney { amount currencyCode } }
+        totalTaxSet { shopMoney { amount currencyCode } }
+        totalPriceSet { shopMoney { amount currencyCode } }
+        currencyCode
+        customer {
+          displayName
+          firstName
+          lastName
+        }
+        lineItems(first: 50) {
+          edges {
+            node {
+              title
+              quantity
+              variantTitle
+              originalUnitPriceSet { shopMoney { amount currencyCode } }
+              image { url }
+            }
+          }
+        }
+        shippingLines(first: 5) {
+          edges {
+            node {
+              title
+            }
+          }
+        }
+      }
+    }`;
+  let res: Response;
+  try {
+    res = await admin.graphql(fullQuery, { variables: { id: orderGid } });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    const protectedFieldDenied =
+      msg.includes("not approved to use the address1 field") ||
+      msg.includes("Access denied for") ||
+      msg.includes("protected customer data");
+    if (!protectedFieldDenied) throw error;
+    res = await admin.graphql(fallbackQuery, { variables: { id: orderGid } });
+  }
   const j = (await res.json()) as {
     data?: {
       shop?: {
         name?: string;
         primaryDomain?: { host?: string };
-        brand?: { logo?: { image?: { url?: string } } };
       };
       order?: Record<string, unknown>;
     };
@@ -188,7 +230,7 @@ export async function getOrderSummaryForCodPage(
   const shop = j.data?.shop;
   const shopName = String(shop?.name || shopLabelFromDomain(shopDomain));
   const shopHost = String(shop?.primaryDomain?.host || shopDomain);
-  const logoUrl = shop?.brand?.logo?.image?.url || null;
+  const logoUrl = null;
 
   const liEdges = (order.lineItems as { edges?: Array<{ node?: Record<string, unknown> }> })?.edges || [];
   const lineItems: CodOrderLineItem[] = liEdges.map(({ node: n }) => {
@@ -217,11 +259,9 @@ export async function getOrderSummaryForCodPage(
   const cur = String(order.currencyCode || tot.currency || "");
 
   const cust = order.customer as Record<string, unknown> | undefined;
-  const defaultPhone = cust?.defaultPhoneNumber as { phoneNumber?: string } | undefined;
   const customerDisplay =
     (cust?.displayName as string) ||
     [cust?.firstName, cust?.lastName].filter(Boolean).join(" ").trim() ||
-    (cust?.email as string) ||
     null;
 
   const shipAddr = order.shippingAddress as {
@@ -236,17 +276,13 @@ export async function getOrderSummaryForCodPage(
     shopLogoUrl: logoUrl,
     orderName: String(order.name || ""),
     orderLegacyId: order.legacyResourceId != null ? String(order.legacyResourceId) : null,
-    orderStatusUrl: order.statusPageUrl ? String(order.statusPageUrl) : null,
+    orderStatusUrl: null,
     orderNote: order.note != null ? String(order.note) : null,
     createdAt: order.createdAt ? String(order.createdAt) : null,
     financialStatus: order.displayFinancialStatus ? String(order.displayFinancialStatus) : null,
     fulfillmentStatus: order.displayFulfillmentStatus ? String(order.displayFulfillmentStatus) : null,
-    email: order.email ? String(order.email) : cust?.email ? String(cust.email) : null,
-    phone:
-      (order.phone as string) ||
-      (cust?.phone as string) ||
-      defaultPhone?.phoneNumber ||
-      null,
+    email: order.email ? String(order.email) : null,
+    phone: order.phone ? String(order.phone) : null,
     customerDisplayName: customerDisplay,
     customerFirstName: cust?.firstName ? String(cust.firstName) : null,
     customerLastName: cust?.lastName ? String(cust.lastName) : null,
