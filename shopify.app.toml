@@ -34,6 +34,26 @@ api_version = "2026-04"
   uri = "/webhooks/checkouts/update"
 
   [[webhooks.subscriptions]]
+  topics = [ "orders/paid" ]
+  uri = "/webhooks/orders/paid"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/fulfilled" ]
+  uri = "/webhooks/orders/fulfilled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/cancelled" ]
+  uri = "/webhooks/orders/cancelled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "fulfillments/create" ]
+  uri = "/webhooks/fulfillments/create"
+
+  [[webhooks.subscriptions]]
+  topics = [ "fulfillments/update" ]
+  uri = "/webhooks/fulfillments/update"
+
+  [[webhooks.subscriptions]]
   uri = "/webhooks/customers/data_request"
   compliance_topics = [ "customers/data_request" ]
 
@@ -47,7 +67,7 @@ api_version = "2026-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_checkouts,read_customers,read_orders,write_orders"
+scopes = "read_checkouts,read_customers,read_orders,write_orders,read_fulfillments"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
@@ -57,3 +77,6 @@ redirect_urls = [
   "https://shopify.whatssms.io/auth/callback",
   "https://shopify.whatssms.io/auth/session-token",
 ]
+
+[build]
+automatically_update_urls_on_dev = false

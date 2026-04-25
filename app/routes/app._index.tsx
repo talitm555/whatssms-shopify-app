@@ -1,23 +1,31 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { Link as RemixLink } from "@remix-run/react";
+import { Link as RemixLink, useLoaderData } from "@remix-run/react";
 import {
-  Page,
-  Layout,
-  Text,
-  Card,
+  Badge,
   BlockStack,
+  Card,
   InlineStack,
+  Layout,
   List,
+  Page,
+  Text,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  const row = await prisma.shopSettings.findUnique({
+    where: { shop: session.shop },
+    select: { encryptedWhatssmsSecret: true },
+  });
+  return { hasWhatssmsKey: Boolean(row?.encryptedWhatssmsSecret) };
 };
 
 export default function Index() {
+  const { hasWhatssmsKey } = useLoaderData<typeof loader>();
+
   return (
     <Page>
       <TitleBar title="WhatsSMS" />
@@ -30,12 +38,26 @@ export default function Index() {
                   WhatsSMS.io for Shopify
                 </Text>
                 <Text as="p" variant="bodyMd">
-                  Connect your WhatsSMS account, configure COD confirmation links, and automate SMS /
-                  WhatsApp messaging using the WhatsSMS REST API (see your dashboard API docs).
+                  Connect your WhatsSMS account, configure COD confirmation links, default senders, and
+                  customer notifications powered by Shopify webhooks.
                 </Text>
+                <InlineStack gap="300" blockAlign="center">
+                  <Text as="span" variant="bodyMd">
+                    API key:
+                  </Text>
+                  {hasWhatssmsKey ? (
+                    <Badge tone="success">Configured</Badge>
+                  ) : (
+                    <Badge tone="attention">Not set</Badge>
+                  )}
+                </InlineStack>
                 <InlineStack gap="300">
-                  <RemixLink to="/app/settings">Connection &amp; COD settings</RemixLink>
-                  <RemixLink to="/app/automations">Automations</RemixLink>
+                  <RemixLink to="/app/connection">WhatsSMS.io Connection</RemixLink>
+                  <RemixLink to="/app/senders">Senders</RemixLink>
+                  <RemixLink to="/app/cod">COD Confirmations</RemixLink>
+                  <RemixLink to="/app/notifications">Customer Notifications</RemixLink>
+                  <RemixLink to="/app/placeholders">Placeholders</RemixLink>
+                  <RemixLink to="/app/about">About</RemixLink>
                 </InlineStack>
               </BlockStack>
             </Card>
@@ -44,14 +66,21 @@ export default function Index() {
             <Card>
               <BlockStack gap="200">
                 <Text as="h2" variant="headingMd">
-                  Built for Shopify checklist
+                  Quick start
                 </Text>
                 <List>
-                  <List.Item>Embedded admin + Polaris + App Bridge</List.Item>
-                  <List.Item>Offline sessions + GraphQL for order tags</List.Item>
-                  <List.Item>GDPR / compliance webhooks</List.Item>
-                  <List.Item>HMAC-verified Shopify webhooks + idempotency</List.Item>
-                  <List.Item>Encrypted API secrets (server-only)</List.Item>
+                  <List.Item>
+                    <RemixLink to="/app/connection">Add your WhatsSMS API key</RemixLink>
+                  </List.Item>
+                  <List.Item>
+                    <RemixLink to="/app/senders">Choose default SMS / WhatsApp senders</RemixLink>
+                  </List.Item>
+                  <List.Item>
+                    <RemixLink to="/app/cod">Tune COD templates</RemixLink>
+                  </List.Item>
+                  <List.Item>
+                    <RemixLink to="/app/notifications">Add customer notifications</RemixLink>
+                  </List.Item>
                 </List>
               </BlockStack>
             </Card>

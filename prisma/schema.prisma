@@ -95,6 +95,11 @@ model CodToken {
   resolvedAt     DateTime?
   createdAt      DateTime  @default(now())
 
+  decisionIp        String?
+  decisionUserAgent String?
+  decisionLanguage  String?
+  decisionReferer   String?
+
   @@index([shop, orderGid])
 }
 

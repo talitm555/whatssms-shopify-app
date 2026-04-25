@@ -1,0 +1,236 @@
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import {
+  Form,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+} from "@remix-run/react";
+import {
+  Banner,
+  BlockStack,
+  Box,
+  Button,
+  Card,
+  FormLayout,
+  Page,
+  Select,
+  Text,
+  TextField,
+} from "@shopify/polaris";
+import { TitleBar } from "@shopify/app-bridge-react";
+import { useEffect, useState } from "react";
+import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
+import { decryptSecret } from "../lib/crypto.server";
+import {
+  deviceSelectOptions,
+  waAccountSelectOptions,
+} from "../lib/whatssms-response.server";
+import { defaultWhatssmsBaseUrl, WhatssmsClient } from "../lib/whatssms.server";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const row = await prisma.shopSettings.findUnique({ where: { shop } });
+
+  let deviceOptions: { label: string; value: string }[] = [];
+  let waOptions: { label: string; value: string }[] = [];
+  let apiError: string | null = null;
+
+  if (row?.encryptedWhatssmsSecret) {
+    try {
+      const secret = decryptSecret(row.encryptedWhatssmsSecret);
+      const base = row.whatssmsApiBaseUrl || defaultWhatssmsBaseUrl();
+      const client = new WhatssmsClient(base, secret);
+      const [devicesJson, waJson] = await Promise.all([client.getDevices(), client.getWaAccounts()]);
+      deviceOptions = deviceSelectOptions(devicesJson);
+      waOptions = waAccountSelectOptions(waJson);
+    } catch (e) {
+      apiError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  return {
+    shop,
+    hasSecret: Boolean(row?.encryptedWhatssmsSecret),
+    defaultSmsMode: row?.defaultSmsMode || "devices",
+    defaultSmsDeviceId: row?.defaultSmsDeviceId || "",
+    defaultWaAccountId: row?.defaultWaAccountId || "",
+    marketingRequiresSmsConsent: row?.marketingRequiresSmsConsent ?? true,
+    deviceOptions,
+    waOptions,
+    apiError,
+  };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const existing = await prisma.shopSettings.findUnique({ where: { shop } });
+  if (!existing?.encryptedWhatssmsSecret) {
+    return { ok: false as const, error: "Save a WhatsSMS API key on the Connection page first." };
+  }
+
+  const form = await request.formData();
+  const defaultSmsMode = String(form.get("defaultSmsMode") || "devices");
+  const defaultSmsDeviceId = String(form.get("defaultSmsDeviceId") || "").trim();
+  const defaultWaAccountId = String(form.get("defaultWaAccountId") || "").trim();
+  const marketingRequiresSmsConsent = form.get("marketingRequiresSmsConsent") === "on";
+
+  await prisma.shopSettings.update({
+    where: { shop },
+    data: {
+      defaultSmsMode,
+      defaultSmsDeviceId: defaultSmsDeviceId || null,
+      defaultWaAccountId: defaultWaAccountId || null,
+      marketingRequiresSmsConsent,
+    },
+  });
+
+  return { ok: true as const };
+};
+
+export default function SendersPage() {
+  const d = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const nav = useNavigation();
+  const busy = nav.state !== "idle";
+
+  const [smsMode, setSmsMode] = useState(d.defaultSmsMode);
+  const [smsDevice, setSmsDevice] = useState(d.defaultSmsDeviceId);
+  const [waAccount, setWaAccount] = useState(d.defaultWaAccountId);
+  const [marketing, setMarketing] = useState(d.marketingRequiresSmsConsent);
+
+  useEffect(() => {
+    setSmsMode(d.defaultSmsMode);
+    setSmsDevice(d.defaultSmsDeviceId);
+    setWaAccount(d.defaultWaAccountId);
+    setMarketing(d.marketingRequiresSmsConsent);
+  }, [d]);
+
+  const smsDeviceOptions =
+    d.deviceOptions.length > 0
+      ? [{ label: "— Custom ID —", value: "__custom__" }, ...d.deviceOptions]
+      : [{ label: "Enter device ID manually", value: "__custom__" }];
+
+  const waOptions =
+    d.waOptions.length > 0
+      ? [{ label: "— Custom ID —", value: "__custom__" }, ...d.waOptions]
+      : [{ label: "Enter WhatsApp account ID manually", value: "__custom__" }];
+
+  const smsSelectValue = d.deviceOptions.some((o) => o.value === smsDevice)
+    ? smsDevice
+    : "__custom__";
+  const waSelectValue = d.waOptions.some((o) => o.value === waAccount) ? waAccount : "__custom__";
+
+  return (
+    <Page>
+      <TitleBar title="WhatsSMS.io Senders" />
+      <BlockStack gap="400">
+        {!d.hasSecret && (
+          <Banner tone="warning" title="API key required">
+            Configure your WhatsSMS API key on the Connection page to load devices and WhatsApp accounts.
+          </Banner>
+        )}
+        {d.apiError && (
+          <Banner tone="critical" title="WhatsSMS API">
+            {d.apiError}
+          </Banner>
+        )}
+        {actionData && "error" in actionData && actionData.error && (
+          <Banner tone="critical">{actionData.error}</Banner>
+        )}
+        {actionData?.ok && <Banner tone="success">Sender defaults saved.</Banner>}
+
+        <Form method="post">
+          <input type="hidden" name="defaultSmsMode" value={smsMode} />
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingMd">
+                Default sending channels
+              </Text>
+              <FormLayout>
+                <Select
+                  label="SMS mode"
+                  options={[
+                    { label: "Android devices", value: "devices" },
+                    { label: "Credits / gateway", value: "credits" },
+                  ]}
+                  value={smsMode}
+                  onChange={setSmsMode}
+                />
+                <Select
+                  label="Default SMS device"
+                  options={smsDeviceOptions}
+                  value={smsSelectValue}
+                  onChange={(v) => {
+                    if (v === "__custom__") setSmsDevice("");
+                    else setSmsDevice(v);
+                  }}
+                  disabled={!d.hasSecret}
+                  helpText="Paired Android devices from your WhatsSMS account."
+                />
+                {smsSelectValue === "__custom__" ? (
+                  <TextField
+                    label="SMS device ID"
+                    name="defaultSmsDeviceId"
+                    value={smsDevice}
+                    onChange={setSmsDevice}
+                    autoComplete="off"
+                  />
+                ) : (
+                  <input type="hidden" name="defaultSmsDeviceId" value={smsDevice} />
+                )}
+                <Select
+                  label="Default WhatsApp account"
+                  options={waOptions}
+                  value={waSelectValue}
+                  onChange={(v) => {
+                    if (v === "__custom__") setWaAccount("");
+                    else setWaAccount(v);
+                  }}
+                  disabled={!d.hasSecret}
+                />
+                {waSelectValue === "__custom__" ? (
+                  <TextField
+                    label="WhatsApp account ID"
+                    name="defaultWaAccountId"
+                    value={waAccount}
+                    onChange={setWaAccount}
+                    autoComplete="off"
+                  />
+                ) : (
+                  <input type="hidden" name="defaultWaAccountId" value={waAccount} />
+                )}
+              </FormLayout>
+            </BlockStack>
+          </Card>
+
+          <Card>
+            <BlockStack gap="200">
+              <Text as="h2" variant="headingMd">
+                Compliance
+              </Text>
+              <label>
+                <input
+                  type="checkbox"
+                  name="marketingRequiresSmsConsent"
+                  value="on"
+                  checked={marketing}
+                  onChange={(e) => setMarketing(e.currentTarget.checked)}
+                />{" "}
+                Require SMS marketing consent when Shopify includes it on the order payload
+              </label>
+            </BlockStack>
+          </Card>
+
+          <Box paddingBlockEnd="400">
+            <Button submit variant="primary" loading={busy} disabled={!d.hasSecret}>
+              Save senders
+            </Button>
+          </Box>
+        </Form>
+      </BlockStack>
+    </Page>
+  );
+}

@@ -6,9 +6,10 @@ Embedded Shopify admin app (Remix + Polaris + App Bridge) that connects a mercha
 
 - **OAuth + offline sessions** via `@shopify/shopify-app-remix` (App Store distribution).
 - **WhatsSMS API key** stored **encrypted at rest** (AES-256-GCM; key from `APP_ENCRYPTION_SECRET`, or `SHOPIFY_API_SECRET` if unset).
-- **Settings**: validate API key, view credits/devices/WhatsApp accounts (from WhatsSMS endpoints), COD templates, gateway hints.
-- **Automations** (toggle + template + SMS/WhatsApp): `order_created`, `order_updated`, `customer_created`, `checkout_abandoned`, `marketing_broadcast` (consent-aware when Shopify includes SMS marketing fields).
-- **COD confirmation**: on qualifying orders, sends SMS and/or WhatsApp with a **public, time-limited** link on this app (`/cod/:token?c=sms|whatsapp`). Submitting applies Shopify order tags exactly: `confirmed_via_sms`, `confirmed_via_whatsapp`, `rejected_via_sms`, `rejected_via_whatsapp` (idempotent; safe on webhook retries).
+- **Admin navigation**: Connection (API health + subscription usage), Senders (default SMS/WhatsApp devices), Placeholders (template variable reference), COD Confirmations, Customer Notifications (per–webhook-topic automations), About.
+- **WhatsSMS.io Connection**: first-time API key capture (host from `WHATSSMS_API_BASE_URL` only), live `/api/get/credits` + `/api/get/subscription` status on each load when a key exists.
+- **Customer Notifications**: one saved rule per Shopify webhook topic (`customers/create`, `orders/create`, `orders/updated`, `orders/paid`, `orders/fulfilled`, `orders/cancelled`, `fulfillments/create`, `fulfillments/update`) with SMS / WhatsApp channels and templates (consent-aware when Shopify includes SMS marketing fields on order payloads).
+- **COD confirmation**: on qualifying orders, sends SMS and/or WhatsApp with a **public, time-limited** link on this app (`/cod/:token?c=sms|whatsapp`). The public page shows order details; **confirm** or **reject** applies tags (`confirmed_via_*` / `rejected_via_*`), appends an **order note** with IP/UA metadata, and **reject** triggers `orderCancel` (reason `CUSTOMER`, notify customer, no auto-refund, restock) when Shopify allows cancellation.
 - **Webhooks**: HMAC verification via `authenticate.webhook`, idempotency via `X-Shopify-Webhook-Id` (stored in `WebhookReceipt`).
 - **Queue**: `AsyncJob` table + `setImmediate` worker for follow-up work; replace with SQS/pg-boss/Cloud Tasks in production.
 - **GDPR / compliance**: `customers/data_request`, `customers/redact`, `shop/redact` handlers.
@@ -18,6 +19,7 @@ Embedded Shopify admin app (Remix + Polaris + App Bridge) that connects a mercha
 Base URL defaults to `https://app.whatssms.io` (override with `WHATSSMS_API_BASE_URL`). Paths use the dashboard contract, e.g.:
 
 - `GET /api/get/credits?secret=…`
+- `GET /api/get/subscription?secret=…`
 - `GET /api/get/devices?secret=…`
 - `GET /api/get/wa.accounts?secret=…`
 - `POST /api/send/sms` (form body + `secret` in query)
@@ -71,7 +73,7 @@ Copy `.env.example` to `.env` and fill:
 | `PORT` | Local port Vite binds to (default **3150**). Cloudflare Tunnel should forward to `http://127.0.0.1:$PORT`. Also passed to `shopify app dev --localhost-port` via `npm run dev`. |
 | `DATABASE_URL` | SQLite dev: `file:./dev.sqlite` (use Postgres in production). |
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | From Partner Dashboard. |
-| `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts). |
+| `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts, fulfillments read). |
 | `SHOPIFY_APP_URL` | Public HTTPS URL of the app (tunnel in dev). |
 | `APP_ENCRYPTION_SECRET` | Strong secret for encrypting WhatsSMS API keys (recommended). |
 | `WHATSSMS_API_BASE_URL` | WhatsSMS API host if not using the default. |
@@ -124,10 +126,11 @@ Covers Shopify webhook HMAC verification helpers and COD detection / tag naming.
 
 Default scopes:
 
-`read_orders,write_orders,read_customers,read_checkouts`
+`read_orders,write_orders,read_customers,read_checkouts,read_fulfillments`
 
-- **write_orders** — order tags for COD confirmation.
-- **read_checkouts** — `checkouts/update` for abandoned-checkout automation.
+- **write_orders** — order tags, COD notes, and `orderCancel` on customer reject.
+- **read_checkouts** — `checkouts/update` (registered; optional future use).
+- **read_fulfillments** — `fulfillments/create` and `fulfillments/update` customer notifications.
 
 After changing scopes, merchants must re-authorize.
 

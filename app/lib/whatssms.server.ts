@@ -30,6 +30,12 @@ export class WhatssmsClient {
     return res.json() as Promise<WhatssmsJson>;
   }
 
+  /** Subscription package + usage quotas (premium accounts). */
+  async getSubscription(): Promise<WhatssmsJson> {
+    const res = await fetch(this.url("/api/get/subscription"));
+    return res.json() as Promise<WhatssmsJson>;
+  }
+
   async getDevices(): Promise<WhatssmsJson> {
     const res = await fetch(this.url("/api/get/devices"));
     return res.json() as Promise<WhatssmsJson>;

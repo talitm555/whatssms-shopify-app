@@ -5,6 +5,8 @@ import { isLikelyCodOrder } from "./cod-detection.server";
 import { applyTemplate, type TemplateVars } from "./template.server";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "./whatssms.server";
 import { enqueueJob } from "./jobs.server";
+import { buildCustomerTemplateVars } from "./customer-handlers.server";
+import { fetchOrderTemplateVarsByNumericId } from "./order-admin.server";
 
 type AdminGraphql = {
   graphql: (
@@ -13,11 +15,21 @@ type AdminGraphql = {
   ) => Promise<Response>;
 };
 
+/** Normalize Shopify webhook topic to `orders/create` style keys used in `Automation.key`. */
+export function webhookTopicToSlashed(topic: string): string {
+  if (topic.includes("/")) return topic.toLowerCase();
+  const idx = topic.lastIndexOf("_");
+  if (idx === -1) return topic.toLowerCase();
+  const resource = topic.slice(0, idx).toLowerCase();
+  const action = topic.slice(idx + 1).toLowerCase();
+  return `${resource}/${action}`;
+}
+
 function orderGid(numericId: number | string): string {
   return `gid://shopify/Order/${numericId}`;
 }
 
-function pickPhone(order: Record<string, unknown>): string | null {
+export function pickPhone(order: Record<string, unknown>): string | null {
   const o = order;
   const direct = o.phone as string | undefined;
   if (direct) return direct;
@@ -30,19 +42,214 @@ function pickPhone(order: Record<string, unknown>): string | null {
   return null;
 }
 
-function buildOrderVars(order: Record<string, unknown>, extra: TemplateVars = {}): TemplateVars {
+function pickPhoneFromCustomer(payload: Record<string, unknown>): string | null {
+  if (payload.phone) return String(payload.phone);
+  const addrs = (payload.addresses as Array<Record<string, unknown>>) || [];
+  for (const a of addrs) {
+    if (a?.phone) return String(a.phone);
+  }
+  return null;
+}
+
+function pickPhoneFromFulfillment(payload: Record<string, unknown>): string | null {
+  const dest = payload.destination as Record<string, unknown> | undefined;
+  if (dest?.phone) return String(dest.phone);
+  return null;
+}
+
+function formatAddressLinesFromRest(addr: Record<string, unknown> | undefined): string {
+  if (!addr) return "";
+  const lines = [
+    [addr.first_name, addr.last_name].filter(Boolean).join(" "),
+    [addr.address1, addr.address2].filter(Boolean).join(" "),
+    [addr.city, addr.province || addr.province_code, addr.zip].filter(Boolean).join(", "),
+    addr.country,
+  ].filter((x) => x && String(x).trim());
+  return lines.join("\n");
+}
+
+function formatLineItemsRest(order: Record<string, unknown>): string {
+  const items = (order.line_items as Array<Record<string, unknown>>) || [];
+  return items
+    .map((li) => {
+      const q = Number(li.quantity || 0);
+      const t = String(li.title || "");
+      return `${q}× ${t}`;
+    })
+    .join("\n");
+}
+
+export function buildOrderVars(
+  order: Record<string, unknown>,
+  shop: string,
+  extra: TemplateVars = {},
+): TemplateVars {
   const customer = (order.customer as Record<string, unknown>) || {};
+  const first = String(customer.first_name || "");
+  const last = String(customer.last_name || "");
   const name =
-    [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
-    (customer.email as string) ||
+    [first, last].filter(Boolean).join(" ") ||
+    String(customer.email || order.email || "") ||
     "";
+
+  const ship = order.shipping_address as Record<string, unknown> | undefined;
+  const bill = order.billing_address as Record<string, unknown> | undefined;
+  const shippingLines = (order.shipping_lines as Array<Record<string, unknown>>) || [];
+  const firstShipTitle = shippingLines[0]?.title;
+
+  const shopLabel = shop.replace(/\.myshopify\.com$/i, "");
+  const shop_name = shopLabel
+    ? shopLabel.charAt(0).toUpperCase() + shopLabel.slice(1)
+    : shop;
+
+  const subtotal = String(order.subtotal_price ?? "");
+  const total = String(order.total_price ?? "");
+  const cur = String(order.currency || "");
+  const orderName = String(order.name || "");
+  const orderNumRaw = order.order_number;
+  const order_number =
+    orderNumRaw !== undefined && orderNumRaw !== null
+      ? String(orderNumRaw)
+      : orderName.replace(/^#/, "");
+
   return {
-    order_name: String(order.name || ""),
-    order_total: `${order.total_price ?? ""} ${order.currency ?? ""}`.trim(),
+    order_id: String(order.id ?? ""),
+    order_name: orderName,
+    order_number,
+    order_status_url: String(order.order_status_url || ""),
+    order_total: `${total} ${cur}`.trim(),
+    subtotal,
+    total,
+    currency: cur,
+    financial_status: String(order.financial_status || ""),
+    fulfillment_status: String(order.fulfillment_status || ""),
+    line_items: formatLineItemsRest(order),
+    line_items_count: String(Array.isArray(order.line_items) ? order.line_items.length : 0),
+    order_note: String(order.note || ""),
+    shipping_method: firstShipTitle ? String(firstShipTitle) : "",
     customer_name: name,
+    customer_first_name: first,
+    customer_last_name: last,
+    customer_email: String(customer.email || order.email || ""),
+    customer_phone: pickPhone(order) || "",
+    shipping_address: formatAddressLinesFromRest(ship),
+    shipping_city: ship?.city ? String(ship.city) : "",
+    shipping_country: ship?.country ? String(ship.country) : "",
+    shipping_zip: ship?.zip ? String(ship.zip) : "",
+    billing_address: formatAddressLinesFromRest(bill),
     shop_order_id: String(order.id ?? ""),
+    shop_name,
+    shop_domain: shop,
+    tracking_number: "",
+    tracking_url: "",
+    tracking_company: "",
     ...extra,
   };
+}
+
+function isOrderLikePayload(p: Record<string, unknown>): boolean {
+  return p.line_items !== undefined && p.financial_status !== undefined;
+}
+
+async function resolvePhoneForTopic(
+  topic: string,
+  payload: Record<string, unknown>,
+  admin: AdminGraphql | undefined,
+  shop: string,
+): Promise<string | null> {
+  if (topic === "customers/create") {
+    return pickPhoneFromCustomer(payload);
+  }
+  if (topic.startsWith("fulfillments/")) {
+    const fromDest = pickPhoneFromFulfillment(payload);
+    if (fromDest) return fromDest;
+    const oid = payload.order_id;
+    if (admin && oid != null) {
+      const vars = await fetchOrderTemplateVarsByNumericId(admin, String(oid), shop);
+      const p = vars?.customer_phone;
+      return p ? String(p) : null;
+    }
+    return null;
+  }
+  return pickPhone(payload);
+}
+
+async function buildTemplateVarsForTopic(
+  shop: string,
+  admin: AdminGraphql | undefined,
+  topic: string,
+  payload: Record<string, unknown>,
+): Promise<TemplateVars> {
+  if (topic === "customers/create") {
+    return buildCustomerTemplateVars(payload, shop);
+  }
+  if (topic.startsWith("fulfillments/")) {
+    const oid = payload.order_id;
+    let base: TemplateVars = {
+      shop_domain: shop,
+      shop_name: shop.replace(/\.myshopify\.com$/i, "") || shop,
+    };
+    if (admin && oid != null) {
+      const fetched = await fetchOrderTemplateVarsByNumericId(admin, String(oid), shop);
+      if (fetched) base = { ...fetched, ...base };
+    }
+    const tracks = payload.tracking_urls as unknown;
+    const urls = Array.isArray(tracks) ? (tracks as string[]) : [];
+    return {
+      ...base,
+      tracking_number: String(payload.tracking_number || ""),
+      tracking_company: String(payload.tracking_company || ""),
+      tracking_url: urls[0] || "",
+    };
+  }
+  return buildOrderVars(payload, shop, {});
+}
+
+/**
+ * Sends a queued WhatsSMS message when an `Automation` row exists for this shop + webhook topic.
+ */
+export async function runNotificationForEvent(
+  shop: string,
+  admin: AdminGraphql | undefined,
+  topicRaw: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (!admin) return;
+  const topic = webhookTopicToSlashed(topicRaw);
+  const settings = await prisma.shopSettings.findUnique({ where: { shop } });
+  if (!settings?.encryptedWhatssmsSecret) return;
+
+  const rule = await prisma.automation.findUnique({
+    where: { shop_key: { shop, key: topic } },
+  });
+  if (!rule?.enabled) return;
+
+  const phone = await resolvePhoneForTopic(topic, payload, admin, shop);
+  if (!phone) return;
+
+  if (isOrderLikePayload(payload)) {
+    const cust = payload.customer as Record<string, unknown> | undefined;
+    const smsConsent = cust?.sms_marketing_consent as Record<string, unknown> | undefined;
+    if (settings.marketingRequiresSmsConsent && smsConsent) {
+      const state = (smsConsent.state as string)?.toLowerCase();
+      if (state && state !== "subscribed") return;
+    }
+  }
+
+  const templateVars = await buildTemplateVarsForTopic(shop, admin, topic, payload);
+
+  await enqueueJob(shop, "automation_message", {
+    key: topic,
+    orderId: payload.id ?? payload.order_id,
+    phone,
+    template: rule.template,
+    sendSms: rule.sendSms,
+    sendWa: rule.sendWa,
+    smsMode: rule.smsMode,
+    smsDevice: rule.smsDevice,
+    waAccount: rule.waAccount,
+    templateVars,
+  });
 }
 
 export async function handleOrderCreated(
@@ -59,8 +266,6 @@ export async function handleOrderCreated(
   if (!settings?.encryptedWhatssmsSecret) return;
 
   const order = payload;
-  const numericId = Number(order.id);
-  const gid = orderGid(numericId);
   const hints =
     settings.codGatewayHints?.split(",").map((s) => s.trim()).filter(Boolean) || [];
 
@@ -75,13 +280,7 @@ export async function handleOrderCreated(
     });
   }
 
-  await runAutomation({
-    shop,
-    admin,
-    key: "order_created",
-    order,
-    settings,
-  });
+  await runNotificationForEvent(shop, admin, "orders/create", order);
 }
 
 export async function handleOrderUpdated(
@@ -93,13 +292,7 @@ export async function handleOrderUpdated(
   const settings = await prisma.shopSettings.findUnique({ where: { shop } });
   if (!settings?.encryptedWhatssmsSecret) return;
 
-  await runAutomation({
-    shop,
-    admin,
-    key: "order_updated",
-    order: payload,
-    settings,
-  });
+  await runNotificationForEvent(shop, admin, "orders/updated", payload);
 }
 
 async function sendCodConfirmationFlow(ctx: {
@@ -139,7 +332,7 @@ async function sendCodConfirmationFlow(ctx: {
   const confirmUrlSms = `${appUrl}/cod/${publicToken}?c=sms`;
   const confirmUrlWa = `${appUrl}/cod/${publicToken}?c=whatsapp`;
 
-  const vars = buildOrderVars(order, {
+  const vars = buildOrderVars(order, shop, {
     confirm_url: confirmUrlSms,
     confirm_url_sms: confirmUrlSms,
     confirm_url_wa: confirmUrlWa,
@@ -178,42 +371,5 @@ async function sendCodConfirmationFlow(ctx: {
   await enqueueJob(shop, "cod_sync_contact", {
     orderId: String(order.id),
     phone,
-  });
-}
-
-async function runAutomation(ctx: {
-  shop: string;
-  admin: AdminGraphql;
-  key: string;
-  order: Record<string, unknown>;
-  settings: { encryptedWhatssmsSecret: string; marketingRequiresSmsConsent: boolean };
-}): Promise<void> {
-  const rule = await prisma.automation.findUnique({
-    where: { shop_key: { shop: ctx.shop, key: ctx.key } },
-  });
-  if (!rule?.enabled) return;
-
-  const phone = pickPhone(ctx.order);
-  if (!phone) return;
-
-  const cust = ctx.order.customer as Record<string, unknown> | undefined;
-  const smsConsent = cust?.sms_marketing_consent as Record<string, unknown> | undefined;
-  if (ctx.settings.marketingRequiresSmsConsent && smsConsent) {
-    const state = (smsConsent.state as string)?.toLowerCase();
-    if (state && state !== "subscribed") return;
-  }
-
-  const vars = buildOrderVars(ctx.order as Record<string, unknown>);
-  await enqueueJob(ctx.shop, "automation_message", {
-    key: ctx.key,
-    orderId: ctx.order.id,
-    phone,
-    template: rule.template,
-    sendSms: rule.sendSms,
-    sendWa: rule.sendWa,
-    smsMode: rule.smsMode,
-    smsDevice: rule.smsDevice,
-    waAccount: rule.waAccount,
-    templateVars: vars,
   });
 }

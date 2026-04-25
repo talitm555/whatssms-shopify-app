@@ -2,7 +2,6 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { createHash } from "crypto";
 import { authenticate } from "../shopify.server";
 import { consumeWebhookOnce } from "../lib/webhook-idempotency.server";
-import prisma from "../db.server";
 import { runNotificationForEvent } from "../lib/orders-handlers.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -18,20 +17,5 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!first) return new Response();
 
   await runNotificationForEvent(shop, result.admin, topic, payload);
-
-  await prisma.storedCustomerRef.upsert({
-    where: {
-      shop_customerGid: {
-        shop,
-        customerGid: `gid://shopify/Customer/${payload.id}`,
-      },
-    },
-    create: {
-      shop,
-      customerGid: `gid://shopify/Customer/${payload.id}`,
-    },
-    update: {},
-  });
-
   return new Response();
 };
