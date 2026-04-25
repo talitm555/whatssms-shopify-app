@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useActionData } from "@remix-run/react";
+import { Link, useActionData, useLoaderData } from "@remix-run/react";
 import {
   Banner,
   BlockStack,
