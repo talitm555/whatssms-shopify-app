@@ -147,10 +147,6 @@ export function buildOrderVars(
   };
 }
 
-function isOrderLikePayload(p: Record<string, unknown>): boolean {
-  return p.line_items !== undefined && p.financial_status !== undefined;
-}
-
 async function resolvePhoneForTopic(
   topic: string,
   payload: Record<string, unknown>,
@@ -168,6 +164,12 @@ async function resolvePhoneForTopic(
       const vars = await fetchOrderTemplateVarsByNumericId(admin, String(oid), shop);
       const p = vars?.customer_phone;
       return p ? String(p) : null;
+    }
+    if (oid != null && !admin) {
+      console.warn(
+        "[whatssms] fulfillment webhook: no admin session; cannot load phone from order",
+        { shop, topic, order_id: oid },
+      );
     }
     return null;
   }
@@ -214,7 +216,6 @@ export async function runNotificationForEvent(
   topicRaw: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  if (!admin) return;
   const topic = webhookTopicToSlashed(topicRaw);
   const settings = await prisma.shopSettings.findUnique({ where: { shop } });
   if (!settings?.encryptedWhatssmsSecret) return;
@@ -227,14 +228,9 @@ export async function runNotificationForEvent(
   const phone = await resolvePhoneForTopic(topic, payload, admin, shop);
   if (!phone) return;
 
-  if (isOrderLikePayload(payload)) {
-    const cust = payload.customer as Record<string, unknown> | undefined;
-    const smsConsent = cust?.sms_marketing_consent as Record<string, unknown> | undefined;
-    if (settings.marketingRequiresSmsConsent && smsConsent) {
-      const state = (smsConsent.state as string)?.toLowerCase();
-      if (state && state !== "subscribed") return;
-    }
-  }
+  const sendSms = rule.sendSms;
+  const sendWa = rule.sendWa;
+  if (!sendSms && !sendWa) return;
 
   const templateVars = await buildTemplateVarsForTopic(shop, admin, topic, payload);
 
@@ -243,8 +239,8 @@ export async function runNotificationForEvent(
     orderId: payload.id ?? payload.order_id,
     phone,
     template: rule.template,
-    sendSms: rule.sendSms,
-    sendWa: rule.sendWa,
+    sendSms,
+    sendWa,
     smsMode: rule.smsMode,
     smsDevice: rule.smsDevice,
     waAccount: rule.waAccount,
@@ -263,7 +259,8 @@ export async function handleOrderCreated(
   }
 
   const settings = await prisma.shopSettings.findUnique({ where: { shop } });
-  if (!settings?.encryptedWhatssmsSecret) return;
+  const encSecret = settings?.encryptedWhatssmsSecret;
+  if (!settings || !encSecret) return;
 
   const order = payload;
   const hints =
@@ -276,7 +273,7 @@ export async function handleOrderCreated(
       shop,
       admin,
       order,
-      settings,
+      settings: { ...settings, encryptedWhatssmsSecret: encSecret },
     });
   }
 
@@ -288,7 +285,6 @@ export async function handleOrderUpdated(
   admin: AdminGraphql | undefined,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  if (!admin) return;
   const settings = await prisma.shopSettings.findUnique({ where: { shop } });
   if (!settings?.encryptedWhatssmsSecret) return;
 
