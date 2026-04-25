@@ -13,6 +13,7 @@ import {
   Button,
   Card,
   InlineStack,
+  Link,
   Page,
   ProgressBar,
   Text,
@@ -28,7 +29,11 @@ import {
   labelForUsageKey,
   sortUsageEntries,
 } from "../lib/whatssms-usage-labels";
-import { defaultWhatssmsBaseUrl, WhatssmsClient } from "../lib/whatssms.server";
+import {
+  defaultWhatssmsBaseUrl,
+  WhatssmsClient,
+  whatssmsDashboardToolsKeysUrl,
+} from "../lib/whatssms.server";
 
 function apiBase(): string {
   return defaultWhatssmsBaseUrl();
@@ -114,6 +119,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     hasSecret,
     connection,
     subscription,
+    whatssmsKeysUrl: whatssmsDashboardToolsKeysUrl(),
   };
 };
 
@@ -163,7 +169,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ConnectionPage() {
-  const { hasSecret, connection, subscription } = useLoaderData<typeof loader>();
+  const { hasSecret, connection, subscription, whatssmsKeysUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const nav = useNavigation();
   const busy = nav.state !== "idle";
@@ -186,8 +192,11 @@ export default function ConnectionPage() {
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
-            Create API keys in WhatsSMS under <strong>Tools → API Keys</strong>. Keys are encrypted at
-            rest.
+            Create API keys in WhatsSMS under <strong>Tools → API Keys</strong> (
+            <Link url={whatssmsKeysUrl} target="_blank" removeUnderline>
+              open dashboard
+            </Link>
+            ).
           </p>
         </Banner>
         {actionData && "error" in actionData && actionData.error && (
