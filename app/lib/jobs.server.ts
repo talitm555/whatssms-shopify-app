@@ -2,13 +2,14 @@ import prisma from "../db.server";
 import { decryptSecret } from "./crypto.server";
 import { applyTemplate, type TemplateVars } from "./template.server";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "./whatssms.server";
+import { readWhatssmsEnvelope } from "./whatssms-response.server";
 
 export async function enqueueJob(
   shop: string,
   type: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  await prisma.asyncJob.create({
+  const created = await prisma.asyncJob.create({
     data: {
       shop,
       type,
@@ -87,19 +88,27 @@ async function runAutomationMessageJob(shop: string, p: AutomationPayload): Prom
   const text = applyTemplate(p.template, p.templateVars || {});
 
   if (p.sendSms) {
-    await client.sendSms({
+    const smsRes = await client.sendSms({
       recipient: p.phone,
       message: text,
       mode: p.smsMode === "credits" ? "credits" : "devices",
       sim: p.smsDevice || settings.defaultSmsDeviceId || undefined,
     });
+    const smsEnv = readWhatssmsEnvelope(smsRes);
+    if (!smsEnv.ok) {
+      throw new Error(`WhatsSMS SMS send failed (${smsEnv.status}): ${smsEnv.message || "unknown error"}`);
+    }
   }
   if (p.sendWa && (p.waAccount || settings.defaultWaAccountId)) {
-    await client.sendWhatsapp({
+    const waRes = await client.sendWhatsapp({
       account: String(p.waAccount || settings.defaultWaAccountId),
       recipient: p.phone,
       message: text,
       type: "text",
     });
+    const waEnv = readWhatssmsEnvelope(waRes);
+    if (!waEnv.ok) {
+      throw new Error(`WhatsSMS WhatsApp send failed (${waEnv.status}): ${waEnv.message || "unknown error"}`);
+    }
   }
 }
