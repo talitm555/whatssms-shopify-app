@@ -42,6 +42,11 @@ model ShopSettings {
   defaultSmsDeviceId String?
   defaultWaAccountId String?
 
+  /// When true, WhatsSMS `shortener=1` is sent for SMS API calls.
+  urlShortenerSms       Boolean @default(false)
+  /// When true, WhatsSMS `shortener=1` is sent for WhatsApp API calls.
+  urlShortenerWhatsapp Boolean @default(false)
+
   codEnabled        Boolean @default(true)
   codSendSms        Boolean @default(true)
   codSendWhatsapp   Boolean @default(false)

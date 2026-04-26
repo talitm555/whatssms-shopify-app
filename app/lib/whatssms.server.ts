@@ -52,6 +52,7 @@ export class WhatssmsClient {
     message: string;
     mode: "devices" | "credits";
     sim?: string;
+    /** When set (e.g. `"1"`), sent as WhatsSMS `shortener` form field. Omit to disable. */
     shortener?: string;
     priority?: string;
   }): Promise<WhatssmsJson> {
@@ -60,7 +61,9 @@ export class WhatssmsClient {
     body.set("message", params.message);
     body.set("mode", params.mode);
     if (params.sim) body.set("sim", params.sim);
-    if (params.shortener) body.set("shortener", params.shortener);
+    if (params.shortener != null && params.shortener !== "") {
+      body.set("shortener", params.shortener);
+    }
     if (params.priority) body.set("priority", params.priority);
 
     const res = await fetch(this.url("/api/send/sms"), {
@@ -78,6 +81,7 @@ export class WhatssmsClient {
     message: string;
     type?: string;
     priority?: string;
+    /** When set (e.g. `"1"`), sent as WhatsSMS `shortener` field. Omit to disable. */
     shortener?: string;
   }): Promise<WhatssmsJson> {
     const form = new FormData();
@@ -86,7 +90,9 @@ export class WhatssmsClient {
     form.set("message", params.message);
     form.set("type", params.type || "text");
     if (params.priority) form.set("priority", params.priority);
-    if (params.shortener) form.set("shortener", params.shortener);
+    if (params.shortener != null && params.shortener !== "") {
+      form.set("shortener", params.shortener);
+    }
 
     const u = new URL(joinBase(this.apiBase) + "/api/send/whatsapp");
     u.searchParams.set("secret", this.secret);

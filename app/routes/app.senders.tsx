@@ -57,6 +57,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     defaultSmsDeviceId: row?.defaultSmsDeviceId || "",
     defaultWaAccountId: row?.defaultWaAccountId || "",
     marketingRequiresSmsConsent: row?.marketingRequiresSmsConsent ?? true,
+    urlShortenerSms: row?.urlShortenerSms ?? false,
+    urlShortenerWhatsapp: row?.urlShortenerWhatsapp ?? false,
     deviceOptions,
     waOptions,
     apiError,
@@ -76,6 +78,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const defaultSmsDeviceId = String(form.get("defaultSmsDeviceId") || "").trim();
   const defaultWaAccountId = String(form.get("defaultWaAccountId") || "").trim();
   const marketingRequiresSmsConsent = form.get("marketingRequiresSmsConsent") === "on";
+  const urlShortenerSms = form.get("urlShortenerSms") === "on";
+  const urlShortenerWhatsapp = form.get("urlShortenerWhatsapp") === "on";
 
   await prisma.shopSettings.update({
     where: { shop },
@@ -84,6 +88,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       defaultSmsDeviceId: defaultSmsDeviceId || null,
       defaultWaAccountId: defaultWaAccountId || null,
       marketingRequiresSmsConsent,
+      urlShortenerSms,
+      urlShortenerWhatsapp,
     },
   });
 
@@ -100,12 +106,16 @@ export default function SendersPage() {
   const [smsDevice, setSmsDevice] = useState(d.defaultSmsDeviceId);
   const [waAccount, setWaAccount] = useState(d.defaultWaAccountId);
   const [marketing, setMarketing] = useState(d.marketingRequiresSmsConsent);
+  const [urlShortenerSms, setUrlShortenerSms] = useState(d.urlShortenerSms);
+  const [urlShortenerWhatsapp, setUrlShortenerWhatsapp] = useState(d.urlShortenerWhatsapp);
 
   useEffect(() => {
     setSmsMode(d.defaultSmsMode);
     setSmsDevice(d.defaultSmsDeviceId);
     setWaAccount(d.defaultWaAccountId);
     setMarketing(d.marketingRequiresSmsConsent);
+    setUrlShortenerSms(d.urlShortenerSms);
+    setUrlShortenerWhatsapp(d.urlShortenerWhatsapp);
   }, [d]);
 
   const smsDeviceOptions =
@@ -140,7 +150,7 @@ export default function SendersPage() {
         {actionData && "error" in actionData && actionData.error && (
           <Banner tone="critical">{actionData.error}</Banner>
         )}
-        {actionData?.ok && <Banner tone="success">Default Sending Channels updated.</Banner>}
+        {actionData?.ok && <Banner tone="success">Senders settings saved.</Banner>}
 
         <Form method="post">
           <BlockStack gap="400">
@@ -204,6 +214,37 @@ export default function SendersPage() {
                   <input type="hidden" name="defaultWaAccountId" value={waAccount} />
                 )}
               </FormLayout>
+            </BlockStack>
+          </Card>
+
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingMd">
+                URL Shortener
+              </Text>
+              <Text as="p" variant="bodySm" tone="subdued">
+                When enabled, WhatsSMS may shorten links in outgoing messages.
+              </Text>
+              <label>
+                <input
+                  type="checkbox"
+                  name="urlShortenerSms"
+                  value="on"
+                  checked={urlShortenerSms}
+                  onChange={(e) => setUrlShortenerSms(e.currentTarget.checked)}
+                />{" "}
+                Enable in SMS messages
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  name="urlShortenerWhatsapp"
+                  value="on"
+                  checked={urlShortenerWhatsapp}
+                  onChange={(e) => setUrlShortenerWhatsapp(e.currentTarget.checked)}
+                />{" "}
+                Enable in WhatsApp messages
+              </label>
             </BlockStack>
           </Card>
 

@@ -306,6 +306,8 @@ async function sendCodConfirmationFlow(ctx: {
     defaultSmsMode: string;
     defaultSmsDeviceId: string | null;
     defaultWaAccountId: string | null;
+    urlShortenerSms: boolean;
+    urlShortenerWhatsapp: boolean;
   };
 }): Promise<void> {
   const { shop, order, settings } = ctx;
@@ -351,6 +353,7 @@ async function sendCodConfirmationFlow(ctx: {
       message: text,
       mode: settings.defaultSmsMode === "credits" ? "credits" : "devices",
       sim: settings.defaultSmsDeviceId || undefined,
+      ...(settings.urlShortenerSms ? { shortener: "1" } : {}),
     });
   }
 
@@ -361,6 +364,7 @@ async function sendCodConfirmationFlow(ctx: {
       recipient: phone,
       message: text,
       type: "text",
+      ...(settings.urlShortenerWhatsapp ? { shortener: "1" } : {}),
     });
   }
 

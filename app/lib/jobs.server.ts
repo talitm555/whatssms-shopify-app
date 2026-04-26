@@ -93,6 +93,7 @@ async function runAutomationMessageJob(shop: string, p: AutomationPayload): Prom
       message: text,
       mode: p.smsMode === "credits" ? "credits" : "devices",
       sim: p.smsDevice || settings.defaultSmsDeviceId || undefined,
+      ...(settings.urlShortenerSms ? { shortener: "1" } : {}),
     });
     const smsEnv = readWhatssmsEnvelope(smsRes);
     if (!smsEnv.ok) {
@@ -105,6 +106,7 @@ async function runAutomationMessageJob(shop: string, p: AutomationPayload): Prom
       recipient: p.phone,
       message: text,
       type: "text",
+      ...(settings.urlShortenerWhatsapp ? { shortener: "1" } : {}),
     });
     const waEnv = readWhatssmsEnvelope(waRes);
     if (!waEnv.ok) {
