@@ -16,7 +16,8 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   }
   if (data?.status === "done") {
     const label = data.action === "confirm" ? "Order confirmed" : "Order rejected";
-    return [{ title: `${label} · Thank you` }];
+    const shopLabel = data.summary?.shopName?.trim();
+    return [{ title: shopLabel ? `${label} · ${shopLabel}` : `${label} · Thank you` }];
   }
   return [{ title: "Order confirmation" }];
 };
@@ -101,12 +102,20 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const channel = url.searchParams.get("c") === "whatsapp" ? "whatsapp" : "sms";
 
   if (row.resolvedAction) {
+    let summary: Awaited<ReturnType<typeof getOrderSummaryForCodPage>> = null;
+    try {
+      const { admin } = await unauthenticated.admin(row.shop);
+      summary = await getOrderSummaryForCodPage(admin, row.orderGid, row.shop);
+    } catch {
+      summary = null;
+    }
     return {
       status: "done" as const,
       action: row.resolvedAction as "confirm" | "reject",
       shop: row.shop,
       channel,
       resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+      summary,
     };
   }
 
@@ -225,7 +234,7 @@ export default function CodConfirmPage() {
             -webkit-font-smoothing: antialiased;
           }
           .cod-done-card {
-            max-width: 480px;
+            max-width: 560px;
             margin: 0 auto;
             background: #fff;
             border-radius: 12px;
@@ -317,6 +326,62 @@ export default function CodConfirmPage() {
             color: #303030;
             word-break: break-word;
           }
+          .cod-done-meta-muted { color: #8a8a8a; font-style: italic; }
+          .cod-done-order-wrap {
+            margin-top: 4px;
+            padding-top: 16px;
+            border-top: 1px solid #e3e3e3;
+          }
+          .cod-done-order-heading {
+            margin: 0 0 12px;
+            font-size: 0.8125rem;
+            font-weight: 650;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #616161;
+          }
+          .cod-done-lines {
+            list-style: none;
+            margin: 0 0 12px;
+            padding: 0;
+          }
+          .cod-done-lines li {
+            display: flex;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 0.8125rem;
+            line-height: 1.35;
+            border-bottom: 1px solid #f1f1f1;
+            align-items: flex-start;
+          }
+          .cod-done-lines li:last-child { border-bottom: 0; }
+          .cod-done-lines img {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #eee;
+            flex-shrink: 0;
+          }
+          .cod-done-line-title { font-weight: 600; color: #303030; }
+          .cod-done-line-meta { color: #616161; margin-top: 2px; font-size: 0.75rem; }
+          .cod-done-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-weight: 650;
+            font-size: 0.9375rem;
+            margin-top: 4px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            color: #202020;
+          }
+          .cod-done-status {
+            margin-top: 10px;
+            font-size: 0.8125rem;
+            color: #616161;
+            line-height: 1.4;
+          }
           .cod-done-foot {
             margin-top: 28px;
             padding-top: 20px;
@@ -397,6 +462,113 @@ export default function CodConfirmPage() {
               <span className="cod-done-meta-label">Shop domain</span>
               <span className="cod-done-meta-value">{data.shop}</span>
             </div>
+            {data.summary ? (
+              <div className="cod-done-order-wrap">
+                <p className="cod-done-order-heading">Order details</p>
+                <div className="cod-done-meta-row">
+                  <span className="cod-done-meta-label">Order</span>
+                  <span className="cod-done-meta-value">{data.summary.orderName}</span>
+                </div>
+                {data.summary.createdAt ? (
+                  <div className="cod-done-meta-row">
+                    <span className="cod-done-meta-label">Placed</span>
+                    <span className="cod-done-meta-value">{new Date(data.summary.createdAt).toLocaleString()}</span>
+                  </div>
+                ) : null}
+                {(data.summary.customerDisplayName || data.summary.email || data.summary.phone) && (
+                  <>
+                    <div className="cod-done-meta-row">
+                      <span className="cod-done-meta-label">Name</span>
+                      <span className="cod-done-meta-value">{data.summary.customerDisplayName || "—"}</span>
+                    </div>
+                    {data.summary.email ? (
+                      <div className="cod-done-meta-row">
+                        <span className="cod-done-meta-label">Email</span>
+                        <span className="cod-done-meta-value">{data.summary.email}</span>
+                      </div>
+                    ) : null}
+                    {data.summary.phone ? (
+                      <div className="cod-done-meta-row">
+                        <span className="cod-done-meta-label">Phone</span>
+                        <span className="cod-done-meta-value">{data.summary.phone}</span>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+                {data.summary.shippingLines.length > 0 ? (
+                  <div className="cod-done-meta-row">
+                    <span className="cod-done-meta-label">Method</span>
+                    <span className="cod-done-meta-value">{data.summary.shippingLines.join(", ")}</span>
+                  </div>
+                ) : null}
+                {data.summary.lineItems.length > 0 ? (
+                  <>
+                    <p className="cod-done-order-heading" style={{ marginTop: 16 }}>
+                      Line items
+                    </p>
+                    <ul className="cod-done-lines">
+                      {data.summary.lineItems.map((li, i) => (
+                        <li key={i}>
+                          {li.imageUrl ? (
+                            <img src={li.imageUrl} alt="" width={36} height={36} />
+                          ) : (
+                            <span style={{ width: 36, height: 36, borderRadius: 6, background: "#eee", flexShrink: 0 }} />
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            <div className="cod-done-line-title">{li.title}</div>
+                            {li.variantTitle ? (
+                              <div className="cod-done-line-meta">{li.variantTitle}</div>
+                            ) : null}
+                            <div className="cod-done-line-meta">
+                              Qty {li.quantity} × {li.unitPrice} {li.currencyCode}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="cod-done-meta-row">
+                      <span className="cod-done-meta-label">Subtotal</span>
+                      <span className="cod-done-meta-value">
+                        {data.summary.subtotal} {data.summary.currencyCode}
+                      </span>
+                    </div>
+                    <div className="cod-done-meta-row">
+                      <span className="cod-done-meta-label">Shipping</span>
+                      <span className="cod-done-meta-value">
+                        {data.summary.shippingTotal} {data.summary.currencyCode}
+                      </span>
+                    </div>
+                    <div className="cod-done-meta-row">
+                      <span className="cod-done-meta-label">Tax</span>
+                      <span className="cod-done-meta-value">
+                        {data.summary.taxTotal} {data.summary.currencyCode}
+                      </span>
+                    </div>
+                    <div className="cod-done-total">
+                      <span>Total</span>
+                      <span>
+                        {data.summary.total} {data.summary.currencyCode}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
+                {(data.summary.financialStatus || data.summary.fulfillmentStatus) && (
+                  <p className="cod-done-status">
+                    {data.summary.financialStatus ? <>Payment: {data.summary.financialStatus}</> : null}
+                    {data.summary.financialStatus && data.summary.fulfillmentStatus ? " · " : null}
+                    {data.summary.fulfillmentStatus ? <>Fulfillment: {data.summary.fulfillmentStatus}</> : null}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="cod-done-order-wrap">
+                <p className="cod-done-order-heading">Order details</p>
+                <div className="cod-done-meta-row">
+                  <span className="cod-done-meta-label">Order</span>
+                  <span className="cod-done-meta-value cod-done-meta-muted">Could not load order details.</span>
+                </div>
+              </div>
+            )}
             {data.resolvedAt ? (
               <div className="cod-done-meta-row">
                 <span className="cod-done-meta-label">Recorded at</span>
