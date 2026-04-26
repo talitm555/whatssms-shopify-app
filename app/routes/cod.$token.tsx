@@ -14,6 +14,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (data?.status === "open" && data.summary) {
     return [{ title: `Confirm order · ${data.summary.shopName}` }];
   }
+  if (data?.status === "done") {
+    const label = data.action === "confirm" ? "Order confirmed" : "Order rejected";
+    return [{ title: `${label} · Thank you` }];
+  }
   return [{ title: "Order confirmation" }];
 };
 
@@ -200,28 +204,208 @@ export default function CodConfirmPage() {
   }
 
   if (data.status === "done") {
-    const actionWord = data.action === "confirm" ? "confirmed" : "rejected";
-    const actionTone = data.action === "confirm" ? "#008060" : "#d72c0d";
+    const isConfirm = data.action === "confirm";
+    const actionWord = isConfirm ? "confirmed" : "rejected";
+    const tone = isConfirm ? "#008060" : "#d72c0d";
+    const toneSurface = isConfirm ? "rgba(0, 128, 96, 0.08)" : "rgba(215, 44, 13, 0.08)";
+    const toneBorder = isConfirm ? "rgba(0, 128, 96, 0.35)" : "rgba(215, 44, 13, 0.35)";
+    const shopSlug = data.shop.replace(/\.myshopify\.com$/i, "");
+    const shopDisplay =
+      shopSlug.length > 0 ? shopSlug.charAt(0).toUpperCase() + shopSlug.slice(1) : data.shop;
+    const channelLabel = data.channel === "whatsapp" ? "WhatsApp" : "SMS";
     return (
-      <div className="cod-page">
+      <div className="cod-page cod-page--done">
         <style>{`
-          .cod-page { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f6f6f7; min-height: 100vh; padding: 24px 16px; }
-          .cod-card { max-width: 560px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 24px; }
-          .cod-badge { display: inline-block; padding: 6px 10px; border-radius: 999px; color: #fff; font-weight: 600; font-size: .85rem; margin-bottom: 12px; }
-          .cod-muted { color: #555; font-size: 0.95rem; margin: 6px 0; }
+          .cod-page--done {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f1f1f1;
+            min-height: 100vh;
+            padding: 32px 16px 48px;
+            color: #303030;
+            -webkit-font-smoothing: antialiased;
+          }
+          .cod-done-card {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+            padding: 32px 28px 28px;
+          }
+          .cod-done-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 24px;
+          }
+          .cod-done-icon-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+          }
+          .cod-done-title {
+            font-size: 1.25rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            margin: 0 0 8px;
+            line-height: 1.25;
+            color: #202020;
+          }
+          .cod-done-sub {
+            margin: 0;
+            font-size: 0.9375rem;
+            line-height: 1.45;
+            color: #616161;
+            max-width: 36em;
+          }
+          .cod-done-banner {
+            margin-top: 24px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1px solid ${toneBorder};
+            background: ${toneSurface};
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+          }
+          .cod-done-banner-icon {
+            flex-shrink: 0;
+            margin-top: 1px;
+          }
+          .cod-done-banner-body { min-width: 0; }
+          .cod-done-banner-title {
+            font-size: 0.8125rem;
+            font-weight: 650;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: ${tone};
+            margin: 0 0 4px;
+          }
+          .cod-done-banner-text {
+            margin: 0;
+            font-size: 0.9375rem;
+            line-height: 1.45;
+            color: #303030;
+          }
+          .cod-done-meta {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e3e3e3;
+          }
+          .cod-done-meta-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 0.875rem;
+            line-height: 1.4;
+          }
+          .cod-done-meta-row + .cod-done-meta-row { border-top: 1px solid #f1f1f1; }
+          .cod-done-meta-label {
+            flex: 0 0 108px;
+            color: #616161;
+            font-weight: 500;
+          }
+          .cod-done-meta-value {
+            flex: 1;
+            color: #303030;
+            word-break: break-word;
+          }
+          .cod-done-foot {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #e3e3e3;
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            color: #8a8a8a;
+            text-align: center;
+          }
         `}</style>
-        <div className="cod-card">
-          <span className="cod-badge" style={{ background: actionTone }}>
-            Response recorded
-          </span>
-          <h1>Thank you</h1>
-          <p className="cod-muted">
-            Your order has been {actionWord} successfully.
-          </p>
-          <p className="cod-muted">Store: {data.shop}</p>
-          {data.resolvedAt ? (
-            <p className="cod-muted">DateTime: {new Date(data.resolvedAt).toLocaleString()}</p>
-          ) : null}
+        <div className="cod-done-card">
+          <div className="cod-done-hero">
+            <div
+              className="cod-done-icon-wrap"
+              style={{ background: toneSurface }}
+              aria-hidden
+            >
+              {isConfirm ? (
+                <svg width="36" height="36" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    fill={tone}
+                  />
+                </svg>
+              ) : (
+                <svg width="36" height="36" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    fill={tone}
+                  />
+                </svg>
+              )}
+            </div>
+            <h1 className="cod-done-title">Thank you</h1>
+            <p className="cod-done-sub">
+              Your response was sent to the store. Your order has been <strong>{actionWord}</strong> successfully.
+            </p>
+          </div>
+
+          <div className="cod-done-banner" role="status">
+            <span className="cod-done-banner-icon" aria-hidden>
+              {isConfirm ? (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.2 5.2l.9.9-5.5 5.5L6 11.9l.9-.9 1.7 1.7 4.6-4.5z"
+                    fill={tone}
+                  />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    fill={tone}
+                  />
+                </svg>
+              )}
+            </span>
+            <div className="cod-done-banner-body">
+              <p className="cod-done-banner-title">Response recorded</p>
+              <p className="cod-done-banner-text">
+                The merchant was notified via order note and tags. Channel: <strong>{channelLabel}</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="cod-done-meta">
+            <div className="cod-done-meta-row">
+              <span className="cod-done-meta-label">Store</span>
+              <span className="cod-done-meta-value">{shopDisplay}</span>
+            </div>
+            <div className="cod-done-meta-row">
+              <span className="cod-done-meta-label">Shop domain</span>
+              <span className="cod-done-meta-value">{data.shop}</span>
+            </div>
+            {data.resolvedAt ? (
+              <div className="cod-done-meta-row">
+                <span className="cod-done-meta-label">Recorded at</span>
+                <span className="cod-done-meta-value">{new Date(data.resolvedAt).toLocaleString()}</span>
+              </div>
+            ) : null}
+          </div>
+
+          <p className="cod-done-foot">You can close this page. If you need help, contact the store directly.</p>
         </div>
       </div>
     );
