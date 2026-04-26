@@ -448,7 +448,7 @@ export default function CodConfirmPage() {
             <div className="cod-done-banner-body">
               <p className="cod-done-banner-title">Response recorded</p>
               <p className="cod-done-banner-text">
-                The merchant was notified via order note and tags. Channel: <strong>{channelLabel}</strong>.
+                The merchant was notified. Channel: <strong>{channelLabel}</strong>.
               </p>
             </div>
           </div>

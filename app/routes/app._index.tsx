@@ -39,7 +39,7 @@ export default function Index() {
                 </Text>
                 <Text as="p" variant="bodyMd">
                   Connect your WhatsSMS account, configure COD confirmation links, default senders, and
-                  customer notifications powered by Shopify webhooks.
+                  customer notifications.
                 </Text>
                 <InlineStack gap="300" blockAlign="center">
                   <Text as="span" variant="bodyMd">
