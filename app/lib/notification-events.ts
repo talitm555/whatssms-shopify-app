@@ -28,7 +28,6 @@ export const NOTIFICATION_EVENT_OPTIONS = [
   { key: "orders/create", label: "Order created" },
   { key: APP_ORDER_CONFIRMED_KEY, label: "Order confirmed" },
   { key: "orders/paid", label: "Order paid" },
-  { key: "orders/fulfilled", label: "Order fulfilled" },
   { key: "orders/cancelled", label: "Order cancelled" },
   { key: "fulfillments/create", label: "Shipment created" },
   { key: "fulfillments/update", label: "Shipment updated" },
@@ -94,15 +93,6 @@ Thank you for your order! Here are the details:
 {{order_total}}
 
 We will notify you once your order has been shipped. If you have any questions, feel free to contact us.
-
-Regards,
-{{shop_name}}`,
-  "orders/fulfilled": `Hi {{customer_first_name}},
-Your order {{order_name}} has been shipped.
-
-Tracking: {{tracking_number}} ({{tracking_company}}).
-
-If you have any questions, feel free to contact us.
 
 Regards,
 {{shop_name}}`,
