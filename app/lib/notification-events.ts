@@ -1,7 +1,10 @@
+/** App-defined key; automations are triggered when an `orders/updated` payload includes a COD confirmation tag (see `order-confirmation-tags.server.ts`). */
+export const APP_ORDER_CONFIRMED_KEY = "app/order_confirmed" as const;
+
 export const NOTIFICATION_EVENT_OPTIONS = [
   { key: "customers/create", label: "Customer created" },
   { key: "orders/create", label: "Order created" },
-  { key: "orders/updated", label: "Order updated" },
+  { key: APP_ORDER_CONFIRMED_KEY, label: "Order confirmed" },
   { key: "orders/paid", label: "Order paid" },
   { key: "orders/fulfilled", label: "Order fulfilled" },
   { key: "orders/cancelled", label: "Order cancelled" },
@@ -16,7 +19,8 @@ const DEFAULT_TEMPLATES: Record<NotificationEventKey, string> = {
     "Welcome {{customer_first_name}}! Thanks for creating an account with {{shop_name}}.",
   "orders/create":
     "Hi {{customer_name}}, we received your order {{order_name}} for {{total}} {{currency}}. Thank you!",
-  "orders/updated": "Update on your order {{order_name}} ({{financial_status}} / {{fulfillment_status}}).",
+  [APP_ORDER_CONFIRMED_KEY]:
+    "Your order {{order_name}} ({{order_total}}) is confirmed. Thank you, {{shop_name}}.",
   "orders/paid": "Payment confirmed for order {{order_name}} ({{total}} {{currency}}).",
   "orders/fulfilled": "Order {{order_name}} has shipped. Track: {{tracking_url}}",
   "orders/cancelled": "Order {{order_name}} has been cancelled.",

@@ -11,6 +11,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   await prisma.$transaction([
     prisma.storedCustomerRef.deleteMany({ where: { shop } }),
     prisma.codToken.deleteMany({ where: { shop } }),
+    prisma.orderConfirmationNotification.deleteMany({ where: { shop } }),
     prisma.automation.deleteMany({ where: { shop } }),
     prisma.webhookReceipt.deleteMany({ where: { shop } }),
     prisma.asyncJob.deleteMany({ where: { shop } }),

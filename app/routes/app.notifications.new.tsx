@@ -105,7 +105,7 @@ export default function NotificationsNewPage() {
                 Event
               </Text>
               <Select
-                label="Shopify webhook event"
+                label="Event"
                 options={available.map((e) => ({ label: e.label, value: e.key }))}
                 value={eventKey}
                 onChange={onEventChange}

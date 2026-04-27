@@ -6,7 +6,9 @@ import { applyTemplate, type TemplateVars } from "./template.server";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "./whatssms.server";
 import { enqueueJob } from "./jobs.server";
 import { buildCustomerTemplateVars } from "./customer-handlers.server";
+import { orderPayloadHasConfirmationTag } from "./order-confirmation-tags.server";
 import { fetchOrderTemplateVarsByNumericId } from "./order-admin.server";
+import { APP_ORDER_CONFIRMED_KEY } from "./notification-events";
 
 type AdminGraphql = {
   graphql: (
@@ -280,6 +282,10 @@ export async function handleOrderCreated(
   await runNotificationForEvent(shop, admin, "orders/create", order);
 }
 
+/**
+ * `orders/updated` is the only Shopify topic for this flow; the merchant-facing automation key is `app/order_confirmed`
+ * and runs only when `confirmed_via_sms` or `confirmed_via_whatsapp` is present (COD public link), once per order.
+ */
 export async function handleOrderUpdated(
   shop: string,
   admin: AdminGraphql | undefined,
@@ -287,8 +293,28 @@ export async function handleOrderUpdated(
 ): Promise<void> {
   const settings = await prisma.shopSettings.findUnique({ where: { shop } });
   if (!settings?.encryptedWhatssmsSecret) return;
+  if (!orderPayloadHasConfirmationTag(payload)) return;
 
-  await runNotificationForEvent(shop, admin, "orders/updated", payload);
+  const topic = webhookTopicToSlashed(APP_ORDER_CONFIRMED_KEY);
+  const rule = await prisma.automation.findUnique({
+    where: { shop_key: { shop, key: topic } },
+  });
+  if (!rule?.enabled) return;
+
+  const phone = await resolvePhoneForTopic(topic, payload, admin, shop);
+  if (!phone) return;
+
+  const idRaw = payload.id;
+  if (idRaw == null) return;
+  const orderNumericId = String(idRaw);
+
+  const insert = await prisma.orderConfirmationNotification.createMany({
+    data: [{ shop, orderNumericId }],
+    skipDuplicates: true,
+  });
+  if (insert.count === 0) return;
+
+  await runNotificationForEvent(shop, admin, APP_ORDER_CONFIRMED_KEY, payload);
 }
 
 async function sendCodConfirmationFlow(ctx: {

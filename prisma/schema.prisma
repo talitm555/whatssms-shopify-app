@@ -59,6 +59,17 @@ model ShopSettings {
   marketingRequiresSmsConsent Boolean @default(true)
 }
 
+/// At most one "Order confirmed" customer notification per order (see `app/order_confirmed` automation; dedupes repeated `orders/updated` deliveries).
+model OrderConfirmationNotification {
+  id             String   @id @default(cuid())
+  shop           String
+  orderNumericId String
+  createdAt      DateTime @default(now())
+
+  @@unique([shop, orderNumericId])
+  @@index([shop])
+}
+
 /// Configurable automation rules (parity with plugin philosophy).
 model Automation {
   id        String   @id @default(cuid())
