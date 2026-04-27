@@ -97,8 +97,22 @@ jobs:
           envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
           script: |
             set -euo pipefail
-            cd "${{ vars.DEPLOY_PATH }}"
-            git pull origin main
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "::error::Deploy path does not exist: $DEPLOY_PATH"
+              echo "One-time: git clone https://github.com/${{ github.repository }}.git \"$DEPLOY_PATH\" && cd \"$DEPLOY_PATH\" && git checkout main"
+              exit 1
+            fi
+            cd "$DEPLOY_PATH"
+            if [ ! -d .git ]; then
+              echo "::error::Not a git repository: $DEPLOY_PATH (missing .git)."
+              echo "Remove the folder if it was created manually, then clone:"
+              echo "  git clone https://github.com/${{ github.repository }}.git \"$DEPLOY_PATH\""
+              echo "For a private repo use SSH or a PAT URL; see DEPLOYMENT.md."
+              exit 1
+            fi
+            git fetch origin main
+            git checkout -B main FETCH_HEAD
             rm -f .env
             umask 077
             {

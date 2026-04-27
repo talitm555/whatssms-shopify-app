@@ -45,11 +45,22 @@ Permissions: the deploy user must own this directory (or have write access) and 
 
 **One-time server setup**
 
+The GitHub deploy job runs **`git pull` inside `DEPLOY_PATH`**. That directory **must be a full git clone** of this repository on the **`main`** branch (an empty folder or a copy of files without `.git` will fail with `fatal: not a git repository`).
+
 1. Install Docker Engine + Compose plugin.
-2. Clone the repository:  
-   `git clone <your-repo-url> /home/talit/shopify.whatssms.io`
-3. Ensure `docker-compose.prod.yml` is present at repo root (committed in this project).
-4. Configure nginx (see below). You do **not** need to create `.env` by hand if you use the provided deploy workflow; the first successful deploy writes it.
+2. **Clone once** (pick HTTPS or SSH; private repos need SSH keys or a PAT in the clone URL):
+
+   ```bash
+   sudo mkdir -p /home/talit
+   sudo chown talit:talit /home/talit   # adjust user/group
+   git clone https://github.com/YOUR_ORG/whatssms-shopify-app.git /home/talit/shopify.whatssms.io
+   cd /home/talit/shopify.whatssms.io && git checkout main
+   ```
+
+   If you already created `/home/talit/shopify.whatssms.io` **without** `git clone`, remove it (after backing up anything you need) and run `git clone` again.
+
+3. Ensure `docker-compose.prod.yml` is at the repo root (it is committed in this project after clone).
+4. Configure nginx (see below). You do **not** need to create `.env` by hand; the deploy workflow recreates it each run.
 
 ## nginx (TLS → app)
 
