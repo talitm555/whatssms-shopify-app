@@ -9,6 +9,7 @@ import { buildCustomerTemplateVars } from "./customer-handlers.server";
 import { orderPayloadHasConfirmationTag } from "./order-confirmation-tags.server";
 import { fetchOrderTemplateVarsByNumericId } from "./order-admin.server";
 import { APP_ORDER_CONFIRMED_KEY } from "./notification-events";
+import { consumeWebhookOnce } from "./webhook-idempotency.server";
 
 type AdminGraphql = {
   graphql: (
@@ -83,7 +84,7 @@ function formatLineItemsRest(order: Record<string, unknown>): string {
 
 function checkoutToken(payload: Record<string, unknown>): string {
   const raw = payload.token ?? payload.checkout_token ?? payload.cart_token;
-  return raw == null ? "" : String(raw);
+  return raw == null ? "" : String(raw).trim();
 }
 
 export function buildOrderVars(
@@ -249,6 +250,15 @@ export async function runNotificationForEvent(
   const sendSms = rule.sendSms;
   const sendWa = rule.sendWa;
   if (!sendSms && !sendWa) return;
+
+  if (topic === "checkouts/update") {
+    const token = checkoutToken(payload);
+    if (!token) return;
+    // Strict dedupe: once per shop + checkout token, only after rule + phone are valid.
+    const dedupeId = `abandoned-checkout:${shop}:${token}`;
+    const firstForCheckout = await consumeWebhookOnce(shop, topic, dedupeId);
+    if (!firstForCheckout) return;
+  }
 
   const templateVars = await buildTemplateVarsForTopic(shop, admin, topic, payload);
 
