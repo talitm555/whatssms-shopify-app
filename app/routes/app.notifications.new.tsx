@@ -17,8 +17,13 @@ import { useCallback, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import {
+  ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES,
+  ABANDONED_CHECKOUT_DELAY_MAX_MINUTES,
+  ABANDONED_CHECKOUT_DELAY_MIN_MINUTES,
+  ABANDONED_CHECKOUT_EVENT_KEY,
   defaultTemplateForEvent,
   NOTIFICATION_EVENT_OPTIONS,
+  parseAbandonedCheckoutDelayMinutesForm,
   type NotificationEventKey,
 } from "../lib/notification-events";
 
@@ -43,6 +48,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const sendWa = form.get("sendWa") === "on";
   const template = String(form.get("template") || "");
   const enabled = form.get("enabled") === "on";
+  const abandonedCheckoutDelayMinutes =
+    key === ABANDONED_CHECKOUT_EVENT_KEY
+      ? parseAbandonedCheckoutDelayMinutesForm(String(form.get("abandonedCheckoutDelayMinutes") ?? ""))
+      : undefined;
 
   if (!NOTIFICATION_EVENT_OPTIONS.some((e) => e.key === key)) {
     return { ok: false as const, error: "Invalid event type." };
@@ -66,6 +75,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       sendSms,
       sendWa,
       template,
+      ...(abandonedCheckoutDelayMinutes != null
+        ? { abandonedCheckoutDelayMinutes }
+        : {}),
     },
   });
 
@@ -84,10 +96,16 @@ export default function NotificationsNewPage() {
   const [sendSms, setSendSms] = useState(true);
   const [sendWa, setSendWa] = useState(false);
   const [enabled, setEnabled] = useState(true);
+  const [abandonedDelayMinutes, setAbandonedDelayMinutes] = useState(
+    String(ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES),
+  );
 
   const onEventChange = useCallback((v: string) => {
     setEventKey(v);
     setTemplate(defaultTemplateForEvent(v));
+    if (v !== ABANDONED_CHECKOUT_EVENT_KEY) {
+      setAbandonedDelayMinutes(String(ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES));
+    }
   }, []);
 
   return (
@@ -154,6 +172,26 @@ export default function NotificationsNewPage() {
               />
             </BlockStack>
           </Card>
+          {eventKey === ABANDONED_CHECKOUT_EVENT_KEY ? (
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">
+                  Timing
+                </Text>
+                <TextField
+                  label="Send after inactivity (minutes)"
+                  name="abandonedCheckoutDelayMinutes"
+                  type="number"
+                  value={abandonedDelayMinutes}
+                  onChange={setAbandonedDelayMinutes}
+                  autoComplete="off"
+                  min={ABANDONED_CHECKOUT_DELAY_MIN_MINUTES}
+                  max={ABANDONED_CHECKOUT_DELAY_MAX_MINUTES}
+                  helpText={`Wait this long after the last checkout update before sending (allowed: ${ABANDONED_CHECKOUT_DELAY_MIN_MINUTES}–${ABANDONED_CHECKOUT_DELAY_MAX_MINUTES} minutes). Each new update while the customer is still on checkout resets the timer.`}
+                />
+              </BlockStack>
+            </Card>
+          ) : null}
           <Card>
             <BlockStack gap="200">
               <Text as="h2" variant="headingMd">

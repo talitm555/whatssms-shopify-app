@@ -83,6 +83,9 @@ model Automation {
   smsDevice String?
   waAccount String?
 
+  /// Minutes after the last `checkouts/update` before sending abandoned-cart recovery (only used when `key` is `checkouts/update`).
+  abandonedCheckoutDelayMinutes Int @default(15)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

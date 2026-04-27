@@ -4,12 +4,14 @@ import { decryptSecret } from "./crypto.server";
 import { isLikelyCodOrder } from "./cod-detection.server";
 import { applyTemplate, type TemplateVars } from "./template.server";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "./whatssms.server";
-import { enqueueJob } from "./jobs.server";
+import { enqueueJob, scheduleOrBumpDeferredAbandonedCheckoutJob } from "./jobs.server";
 import { buildCustomerTemplateVars } from "./customer-handlers.server";
 import { orderPayloadHasConfirmationTag } from "./order-confirmation-tags.server";
 import { fetchOrderTemplateVarsByNumericId } from "./order-admin.server";
-import { APP_ORDER_CONFIRMED_KEY } from "./notification-events";
-import { consumeWebhookOnce } from "./webhook-idempotency.server";
+import {
+  APP_ORDER_CONFIRMED_KEY,
+  clampAbandonedCheckoutDelayMinutes,
+} from "./notification-events";
 
 type AdminGraphql = {
   graphql: (
@@ -85,6 +87,11 @@ function formatLineItemsRest(order: Record<string, unknown>): string {
 function checkoutToken(payload: Record<string, unknown>): string {
   const raw = payload.token ?? payload.checkout_token ?? payload.cart_token;
   return raw == null ? "" : String(raw).trim();
+}
+
+/** Exported for webhook routes (cancel on complete). */
+export function checkoutPayloadToken(payload: Record<string, unknown>): string {
+  return checkoutToken(payload);
 }
 
 export function buildOrderVars(
@@ -251,16 +258,31 @@ export async function runNotificationForEvent(
   const sendWa = rule.sendWa;
   if (!sendSms && !sendWa) return;
 
+  const templateVars = await buildTemplateVarsForTopic(shop, admin, topic, payload);
+
   if (topic === "checkouts/update") {
     const token = checkoutToken(payload);
     if (!token) return;
-    // Strict dedupe: once per shop + checkout token, only after rule + phone are valid.
-    const dedupeId = `abandoned-checkout:${shop}:${token}`;
-    const firstForCheckout = await consumeWebhookOnce(shop, topic, dedupeId);
-    if (!firstForCheckout) return;
+    await scheduleOrBumpDeferredAbandonedCheckoutJob(
+      shop,
+      {
+        key: topic,
+        orderId: payload.id ?? payload.order_id,
+        phone,
+        template: rule.template,
+        sendSms,
+        sendWa,
+        smsMode: rule.smsMode,
+        smsDevice: rule.smsDevice,
+        waAccount: rule.waAccount,
+        templateVars,
+        abandonedCheckoutDefer: true,
+        abandonedCheckoutToken: token,
+      },
+      clampAbandonedCheckoutDelayMinutes(rule.abandonedCheckoutDelayMinutes),
+    );
+    return;
   }
-
-  const templateVars = await buildTemplateVarsForTopic(shop, admin, topic, payload);
 
   await enqueueJob(shop, "automation_message", {
     key: topic,

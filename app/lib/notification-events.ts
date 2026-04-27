@@ -1,6 +1,27 @@
 /** App-defined key; automations are triggered when an `orders/updated` payload includes a COD confirmation tag (see `order-confirmation-tags.server.ts`). */
 export const APP_ORDER_CONFIRMED_KEY = "app/order_confirmed" as const;
 
+export const ABANDONED_CHECKOUT_EVENT_KEY = "checkouts/update" as const;
+
+export const ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES = 15;
+export const ABANDONED_CHECKOUT_DELAY_MIN_MINUTES = 1;
+export const ABANDONED_CHECKOUT_DELAY_MAX_MINUTES = 10080;
+
+export function clampAbandonedCheckoutDelayMinutes(value: number): number {
+  if (!Number.isFinite(value)) return ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES;
+  const n = Math.floor(value);
+  return Math.min(
+    ABANDONED_CHECKOUT_DELAY_MAX_MINUTES,
+    Math.max(ABANDONED_CHECKOUT_DELAY_MIN_MINUTES, n),
+  );
+}
+
+export function parseAbandonedCheckoutDelayMinutesForm(raw: string | null | undefined): number {
+  const s = String(raw ?? "").trim();
+  if (!s) return ABANDONED_CHECKOUT_DELAY_DEFAULT_MINUTES;
+  return clampAbandonedCheckoutDelayMinutes(Number(s));
+}
+
 export const NOTIFICATION_EVENT_OPTIONS = [
   { key: "customers/create", label: "Customer created" },
   { key: "checkouts/update", label: "Abandoned cart recovery" },

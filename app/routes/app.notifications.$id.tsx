@@ -20,7 +20,13 @@ import { TitleBar } from "@shopify/app-bridge-react";
 import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { NOTIFICATION_EVENT_OPTIONS } from "../lib/notification-events";
+import {
+  ABANDONED_CHECKOUT_DELAY_MAX_MINUTES,
+  ABANDONED_CHECKOUT_DELAY_MIN_MINUTES,
+  ABANDONED_CHECKOUT_EVENT_KEY,
+  NOTIFICATION_EVENT_OPTIONS,
+  parseAbandonedCheckoutDelayMinutesForm,
+} from "../lib/notification-events";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -54,6 +60,11 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const sendWa = form.get("sendWa") === "on";
   const template = String(form.get("template") || "");
   const enabled = form.get("enabled") === "on";
+  const automationKey = String(form.get("automationKey") || "");
+  const abandonedCheckoutDelayMinutes =
+    automationKey === ABANDONED_CHECKOUT_EVENT_KEY
+      ? parseAbandonedCheckoutDelayMinutesForm(String(form.get("abandonedCheckoutDelayMinutes") ?? ""))
+      : undefined;
 
   if (!sendSms && !sendWa) {
     return { ok: false as const, error: "Select at least one channel (SMS or WhatsApp)." };
@@ -66,6 +77,9 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       sendSms,
       sendWa,
       template,
+      ...(abandonedCheckoutDelayMinutes != null
+        ? { abandonedCheckoutDelayMinutes }
+        : {}),
     },
   });
 
@@ -82,12 +96,16 @@ export default function NotificationsEditPage() {
   const [sendSms, setSendSms] = useState(row.sendSms);
   const [sendWa, setSendWa] = useState(row.sendWa);
   const [enabled, setEnabled] = useState(row.enabled);
+  const [abandonedDelayMinutes, setAbandonedDelayMinutes] = useState(
+    String(row.abandonedCheckoutDelayMinutes),
+  );
 
   useEffect(() => {
     setTemplate(row.template);
     setSendSms(row.sendSms);
     setSendWa(row.sendWa);
     setEnabled(row.enabled);
+    setAbandonedDelayMinutes(String(row.abandonedCheckoutDelayMinutes));
   }, [row]);
 
   return (
@@ -109,6 +127,7 @@ export default function NotificationsEditPage() {
         </Card>
         <Form method="post">
           <input type="hidden" name="intent" value="save" />
+          <input type="hidden" name="automationKey" value={row.key} />
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
@@ -151,6 +170,26 @@ export default function NotificationsEditPage() {
               />
             </BlockStack>
           </Card>
+          {row.key === ABANDONED_CHECKOUT_EVENT_KEY ? (
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">
+                  Timing
+                </Text>
+                <TextField
+                  label="Send after inactivity (minutes)"
+                  name="abandonedCheckoutDelayMinutes"
+                  type="number"
+                  value={abandonedDelayMinutes}
+                  onChange={setAbandonedDelayMinutes}
+                  autoComplete="off"
+                  min={ABANDONED_CHECKOUT_DELAY_MIN_MINUTES}
+                  max={ABANDONED_CHECKOUT_DELAY_MAX_MINUTES}
+                  helpText={`Wait this long after the last checkout update before sending (allowed: ${ABANDONED_CHECKOUT_DELAY_MIN_MINUTES}–${ABANDONED_CHECKOUT_DELAY_MAX_MINUTES} minutes). Each new update while the customer is still on checkout resets the timer.`}
+                />
+              </BlockStack>
+            </Card>
+          ) : null}
           <Card>
             <label>
               <input
