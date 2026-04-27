@@ -10,14 +10,14 @@ If you do not need to keep local sessions or settings:
 2. Create a database and user, e.g.:
 
    ```bash
-   createdb whatssms_shopify
-   createuser whatssms -P
+   createdb shopify_whatssms
+   createuser shopify_whatssms -P
    ```
 
 3. Set in `.env`:
 
    ```bash
-   DATABASE_URL="postgresql://whatssms:YOUR_PASSWORD@127.0.0.1:5432/whatssms_shopify?schema=public"
+   DATABASE_URL="postgresql://shopify_whatssms:YOUR_PASSWORD@127.0.0.1:5432/shopify_whatssms?schema=public"
    ```
 
 4. Apply schema:

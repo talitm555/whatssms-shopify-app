@@ -20,12 +20,12 @@ services:
       - "127.0.0.1:5432:5432"
 ```
 
-Then create a **separate database and user** for the Shopify app (e.g. `whatssms_shopify`) via `init-data.sh` or manual SQL; grant that user access only to that database.
+Then create a **separate database and user** for the Shopify app (e.g. `shopify_whatssms`) via `init-data.sh` or manual SQL; grant that user access only to that database.
 
 **`DATABASE_URL` from the Shopify container** (see [`docker-compose.prod.yml`](docker-compose.prod.yml)):
 
 ```text
-postgresql://SHOPIFY_DB_USER:SHOPIFY_DB_PASSWORD@host.docker.internal:5432/whatssms_shopify?schema=public
+postgresql://SHOPIFY_DB_USER:SHOPIFY_DB_PASSWORD@host.docker.internal:5432/shopify_whatssms?schema=public
 ```
 
 Linux Docker 20.10+ provides `host.docker.internal` when `extra_hosts: ["host.docker.internal:host-gateway"]` is set (already in `docker-compose.prod.yml`).
