@@ -37,20 +37,83 @@ export const NOTIFICATION_EVENT_OPTIONS = [
 export type NotificationEventKey = (typeof NOTIFICATION_EVENT_OPTIONS)[number]["key"];
 
 const DEFAULT_TEMPLATES: Record<NotificationEventKey, string> = {
-  "customers/create":
-    "Welcome {{customer_first_name}}! Thanks for creating an account with {{shop_name}}.",
-  "checkouts/update":
-    "Hi {{customer_first_name}}, you left {{line_items_count}} item(s) in your cart at {{shop_name}}. Complete your checkout here: {{abandoned_checkout_url}}",
-  "orders/create":
-    "Hi {{customer_name}}, we received your order {{order_name}} for {{total}} {{currency}}. Thank you!",
-  [APP_ORDER_CONFIRMED_KEY]:
-    "Your order {{order_name}} ({{order_total}}) is confirmed. Thank you, {{shop_name}}.",
-  "orders/paid": "Payment confirmed for order {{order_name}} ({{total}} {{currency}}).",
-  "orders/fulfilled": "Order {{order_name}} has shipped. Track: {{tracking_url}}",
-  "orders/cancelled": "Order {{order_name}} has been cancelled.",
-  "fulfillments/create":
-    "Your order {{order_name}} is on its way. Tracking: {{tracking_number}} ({{tracking_company}}).",
-  "fulfillments/update": "Tracking update for {{order_name}}: {{tracking_url}}.",
+  [APP_ORDER_CONFIRMED_KEY]: `Hi {{customer_first_name}},
+Thank you for confirming your order!
+Here are the details:
+{{order_name}}
+{{line_items}}
+{{order_total}}
+
+We will notify you once your order has been shipped. If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "checkouts/update": `Hi {{customer_first_name}},
+You left {{line_items_count}} item(s) in your cart at {{shop_name}}.
+Complete your order here:
+{{abandoned_checkout_url}}
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "customers/create": `Welcome {{customer_first_name}}!
+Thanks for creating an account with us.
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "fulfillments/create": `Hi {{customer_first_name}},
+Your order {{order_name}} is on its way.
+Tracking: {{tracking_number}} ({{tracking_company}}).
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "fulfillments/update": `Hi {{customer_first_name}},
+Your order {{order_name}} has an updated tracking status.
+Tracking: {{tracking_number}} ({{tracking_company}}).
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "orders/cancelled": `Hi {{customer_first_name}},
+Your order {{order_name}} has been cancelled. 
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "orders/create": `Hi {{customer_first_name}},
+Thank you for your order! Here are the details:
+{{order_name}}
+{{line_items}}
+{{order_total}}
+
+We will notify you once your order has been shipped. If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "orders/fulfilled": `Hi {{customer_first_name}},
+Your order {{order_name}} has been shipped.
+
+Tracking: {{tracking_number}} ({{tracking_company}}).
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
+  "orders/paid": `Hi {{customer_first_name}},
+Thank you for your payment!
+Your payment for order {{order_name}} has been received.
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`,
 };
 
 export function defaultTemplateForEvent(key: string): string {

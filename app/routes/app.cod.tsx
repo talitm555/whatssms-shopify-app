@@ -17,13 +17,31 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { PLACEHOLDER_REFERENCE } from "../lib/placeholders";
 
-const COD_SAMPLE_SMS = `Hi {{customer_name}}, please confirm your COD order {{order_name}}
-({{line_items_count}} item(s), total {{total}} {{currency}}).
-Confirm or reject: {{confirm_url_sms}}`;
+const COD_SAMPLE_SMS = `Hi {{customer_first_name}},
+Please click the link below to confirm your order:
+{{order_name}}
+{{line_items}}
+{{order_total}}
 
-const COD_SAMPLE_WA = `Hi {{customer_name}}, please confirm your COD order {{order_name}}
-({{line_items_count}} item(s), total {{total}} {{currency}}).
-Confirm or reject: {{confirm_url_wa}}`;
+{{confirm_url_sms}}
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`;
+
+const COD_SAMPLE_WA = `Hi {{customer_first_name}},
+Please click the link below to confirm your order:
+{{order_name}}
+{{line_items}}
+{{order_total}}
+
+{{confirm_url_wa}}
+
+If you have any questions, feel free to contact us.
+
+Regards,
+{{shop_name}}`;
 
 const DEFAULT_GATEWAY_HINTS = "Cash on Delivery, Bank Transfer";
 

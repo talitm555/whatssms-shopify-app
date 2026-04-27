@@ -50,8 +50,8 @@ model ShopSettings {
   codEnabled        Boolean @default(true)
   codSendSms        Boolean @default(true)
   codSendWhatsapp   Boolean @default(false)
-  codSmsTemplate    String  @default("Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_sms}}")
-  codWaTemplate     String  @default("Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_wa}}")
+  codSmsTemplate    String  @default("Hi {{customer_first_name}},\nPlease click the link below to confirm your order:\n{{order_name}}\n{{line_items}}\n{{order_total}}\n\n{{confirm_url_sms}}\n\nIf you have any questions, feel free to contact us.\n\nRegards,\n{{shop_name}}")
+  codWaTemplate     String  @default("Hi {{customer_first_name}},\nPlease click the link below to confirm your order:\n{{order_name}}\n{{line_items}}\n{{order_total}}\n\n{{confirm_url_wa}}\n\nIf you have any questions, feel free to contact us.\n\nRegards,\n{{shop_name}}")
   codLinkTtlHours   Int     @default(72)
   /// Comma-separated substrings for extra COD gateway detection (optional).
   codGatewayHints   String?
