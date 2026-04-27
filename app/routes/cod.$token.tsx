@@ -9,6 +9,7 @@ import {
   cancelOrderCustomerReject,
   getOrderSummaryForCodPage,
 } from "../lib/order-admin.server";
+import { codRateLimitResponse } from "../lib/rate-limit.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (data?.status === "open" && data.summary) {
@@ -89,6 +90,9 @@ function noteBlock(args: {
 }
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
+  const limited = codRateLimitResponse(request, "read");
+  if (limited) return limited;
+
   const publicToken = params.token;
   if (!publicToken) throw new Response("Not found", { status: 404 });
 
@@ -132,6 +136,9 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
+  const limited = codRateLimitResponse(request, "write");
+  if (limited) return limited;
+
   const publicToken = params.token;
   if (!publicToken) throw new Response("Not found", { status: 404 });
 

@@ -11,7 +11,7 @@ Embedded Shopify admin app (Remix + Polaris + App Bridge) that connects a mercha
 - **Customer Notifications**: one saved rule per event type (Shopify topics: `customers/create`, `checkouts/update` for abandoned cart recovery, `orders/create`, `orders/paid`, `orders/cancelled`, `fulfillments/create`, `fulfillments/update`, plus app event **Order confirmed** driven by `orders/updated` when confirmation tags are present) with SMS / WhatsApp channels and templates (consent-aware when Shopify includes SMS marketing fields on order payloads). **Abandoned cart** uses Shopify’s recovery URL on `checkouts/update`, but the app **defers sending** until **N minutes after the last checkout update** (merchant-configurable when creating or editing that notification) and **cancels** the pending message if the checkout completes.
 - **COD confirmation**: on qualifying orders, sends SMS and/or WhatsApp with a **public, time-limited** link on this app (`/cod/:token?c=sms|whatsapp`). The public page shows order details; **confirm** or **reject** applies tags (`confirmed_via_*` / `rejected_via_*`), appends an **order note** with IP/UA metadata, and **reject** triggers `orderCancel` (reason `CUSTOMER`, notify customer, no auto-refund, restock) when Shopify allows cancellation.
 - **Webhooks**: HMAC verification via `authenticate.webhook`, idempotency via `X-Shopify-Webhook-Id` (stored in `WebhookReceipt`).
-- **Queue**: `AsyncJob` table + `setImmediate` worker for follow-up work; a lightweight **15s sweep** also runs in the Node process so deferred jobs (abandoned checkout) execute when `runAfter` passes without another webhook. Replace with SQS/pg-boss/Cloud Tasks in production.
+- **Queue**: `AsyncJob` table in **Postgres** + `setImmediate` worker for follow-up work; a lightweight **15s sweep** also runs in the Node process so deferred jobs (abandoned checkout) execute when `runAfter` passes without another webhook. Optional dedicated **worker** container can run `processPendingJobs` on an interval (see [`DEPLOYMENT.md`](DEPLOYMENT.md)). At very large scale, consider SQS/pg-boss/Cloud Tasks.
 - **GDPR / compliance**: `customers/data_request`, `customers/redact`, `shop/redact` handlers.
 
 ## WhatsSMS API (verified paths)
@@ -61,7 +61,8 @@ Under **`[auth].redirect_urls`** in the dev TOML, include **`https://shopify.tal
 
 ### Requirements
 
-- Node `>=20.19` (per `package.json` engines).
+- Node **22 LTS** for Docker and GitHub Actions; `package.json` engines allow `>=20.19` or `>=22.12`.
+- **PostgreSQL** for the database (local, CI, and production).
 - Shopify Partner app + CLI (`shopify app dev`).
 
 ### Environment
@@ -71,7 +72,7 @@ Copy `.env.example` to `.env` and fill:
 | Variable | Purpose |
 |----------|---------|
 | `PORT` | Local port Vite binds to (default **3150**). Cloudflare Tunnel should forward to `http://127.0.0.1:$PORT`. Also passed to `shopify app dev --localhost-port` via `npm run dev`. |
-| `DATABASE_URL` | SQLite dev: `file:./dev.sqlite` (use Postgres in production). |
+| `DATABASE_URL` | **PostgreSQL** connection string (local, Docker, or production). |
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | From Partner Dashboard. |
 | `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts, fulfillments read). |
 | `SHOPIFY_APP_URL` | Public HTTPS URL of the app (tunnel in dev). |
@@ -141,6 +142,8 @@ After changing scopes, merchants must re-authorize.
 
 ## Production notes
 
-- Replace SQLite with **Postgres** and run migrations in CI.
-- Use a **real job queue** + worker for `AsyncJob` at scale.
-- Configure **monitoring** and **rate limits** on public `/cod/*` routes if needed.
+- **Deploy, Docker, nginx, GitHub Actions, and env vars:** see [`DEPLOYMENT.md`](DEPLOYMENT.md).
+- **Moving an old local SQLite dev DB to Postgres:** see [`MIGRATION_SQLITE_TO_POSTGRES.md`](MIGRATION_SQLITE_TO_POSTGRES.md).
+- Migrations run in **CI** and on container start (`npm run setup` → `prisma migrate deploy`).
+- **`AsyncJob`** uses Postgres; optional **worker** container for dedicated polling (documented in `DEPLOYMENT.md`).
+- **Health checks** (`/health`, `/ready`) and **in-memory rate limits** on public `/cod/*` (see `DEPLOYMENT.md` for scaling caveats).

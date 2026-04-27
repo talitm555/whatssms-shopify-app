@@ -1,3 +1,11 @@
-.cache
-build
 node_modules
+.git
+build
+.cache
+.env
+.env.*
+!.env.example
+.shopify
+extensions/*/dist
+coverage
+.DS_Store
