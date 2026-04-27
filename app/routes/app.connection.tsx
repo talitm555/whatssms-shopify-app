@@ -87,7 +87,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
       connection = {
         ok: env.ok,
-        message: env.ok ? "API responded successfully." : env.message || "Unexpected API response.",
+        message: env.ok ? "API connected successfully." : env.message || "API connection failed.",
         creditsDisplay,
       };
     } catch (e) {
@@ -192,7 +192,7 @@ export default function ConnectionPage() {
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
-            Create API keys in WhatsSMS under <strong>Tools → API Keys</strong> (
+            Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong> (
             <Link url={whatssmsKeysUrl} target="_blank" removeUnderline>
               open dashboard
             </Link>

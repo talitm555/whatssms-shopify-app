@@ -38,8 +38,7 @@ export default function Index() {
                   WhatsSMS.io for Shopify
                 </Text>
                 <Text as="p" variant="bodyMd">
-                  Connect your WhatsSMS account, configure COD confirmation links, default senders, and
-                  customer notifications.
+                  Connect your WhatsSMS account, configure Default Senders, COD Confirmations, and Customer Notifications.
                 </Text>
                 <InlineStack gap="300" blockAlign="center">
                   <Text as="span" variant="bodyMd">
@@ -53,7 +52,7 @@ export default function Index() {
                 </InlineStack>
                 <InlineStack gap="300">
                   <RemixLink to="/app/connection">Connection</RemixLink>
-                  <RemixLink to="/app/senders">Senders</RemixLink>
+                  <RemixLink to="/app/senders">Default Senders</RemixLink>
                   <RemixLink to="/app/cod">COD Confirmations</RemixLink>
                   <RemixLink to="/app/notifications">Customer Notifications</RemixLink>
                   <RemixLink to="/app/placeholders">Placeholders</RemixLink>
@@ -70,16 +69,16 @@ export default function Index() {
                 </Text>
                 <List>
                   <List.Item>
-                    <RemixLink to="/app/connection">Add your WhatsSMS API key</RemixLink>
+                    <RemixLink to="/app/connection">Add your WhatsSMS API Key</RemixLink>
                   </List.Item>
                   <List.Item>
-                    <RemixLink to="/app/senders">Choose default SMS / WhatsApp senders</RemixLink>
+                    <RemixLink to="/app/senders">Choose Default SMS / WhatsApp Senders</RemixLink>
                   </List.Item>
                   <List.Item>
-                    <RemixLink to="/app/cod">Tune COD templates</RemixLink>
+                    <RemixLink to="/app/cod">Tune COD Confirmation Templates</RemixLink>
                   </List.Item>
                   <List.Item>
-                    <RemixLink to="/app/notifications">Add customer notifications</RemixLink>
+                    <RemixLink to="/app/notifications">Add Customer Notifications</RemixLink>
                   </List.Item>
                 </List>
               </BlockStack>

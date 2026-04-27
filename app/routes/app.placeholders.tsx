@@ -25,7 +25,7 @@ export default function PlaceholdersPage() {
         <Card>
           <BlockStack gap="300">
             <Text as="p" variant="bodyMd">
-              Use these variables in COD templates and customer notification templates. They are replaced
+              Use these variables in message templates. They are replaced
               when messages are sent (missing values become empty strings).
             </Text>
             <IndexTable

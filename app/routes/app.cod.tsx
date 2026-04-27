@@ -184,7 +184,7 @@ export default function CodSettingsPage() {
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
-                COD confirmation messages
+                COD Confirmation Messages
               </Text>
               <label>
                 <input
@@ -194,7 +194,7 @@ export default function CodSettingsPage() {
                   checked={codEnabled}
                   onChange={(e) => setCodEnabled(e.currentTarget.checked)}
                 />{" "}
-                Enable COD flow
+                Enable COD Flow
               </label>
               <label>
                 <input
@@ -204,7 +204,7 @@ export default function CodSettingsPage() {
                   checked={codSendSms}
                   onChange={(e) => setCodSendSms(e.currentTarget.checked)}
                 />{" "}
-                Send SMS link
+                Send Confirmation Link via SMS
               </label>
               <label>
                 <input
@@ -214,10 +214,10 @@ export default function CodSettingsPage() {
                   checked={codSendWhatsapp}
                   onChange={(e) => setCodSendWhatsapp(e.currentTarget.checked)}
                 />{" "}
-                Send WhatsApp link
+                Send Confirmation Link via WhatsApp
               </label>
               <TextField
-                label="SMS template"
+                label="SMS Template"
                 name="codSmsTemplate"
                 value={codSmsTemplate}
                 onChange={setCodSmsTemplate}
@@ -225,7 +225,7 @@ export default function CodSettingsPage() {
                 autoComplete="off"
               />
               <TextField
-                label="WhatsApp template"
+                label="WhatsApp Template"
                 name="codWaTemplate"
                 value={codWaTemplate}
                 onChange={setCodWaTemplate}
@@ -233,7 +233,7 @@ export default function CodSettingsPage() {
                 autoComplete="off"
               />
               <TextField
-                label="Link validity (hours)"
+                label="Link Validity (hours)"
                 name="codLinkTtlHours"
                 value={codLinkTtlHours}
                 onChange={setCodLinkTtlHours}
@@ -242,12 +242,12 @@ export default function CodSettingsPage() {
                 min={1}
               />
               <TextField
-                label="Extra COD gateway hints"
+                label="Extra COD Gateway Hints"
                 name="codGatewayHints"
                 value={codGatewayHints}
                 onChange={setCodGatewayHints}
                 autoComplete="off"
-                helpText="Comma-separated substrings to match payment gateway names."
+                helpText="Comma-separated substrings to match Payment Gateway names."
               />
             </BlockStack>
           </Card>

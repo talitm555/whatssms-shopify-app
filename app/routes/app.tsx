@@ -72,10 +72,10 @@ export default function App() {
           Home
         </a>
         <a href="/app/connection">Connection</a>
-        <a href="/app/senders">Senders</a>
-        <a href="/app/placeholders">Placeholders</a>
+        <a href="/app/senders">Default Senders</a>
         <a href="/app/cod">COD Confirmations</a>
         <a href="/app/notifications">Customer Notifications</a>
+        <a href="/app/placeholders">Placeholders</a>
         <a href="/app/about">About</a>
       </NavMenu>
       <Outlet />

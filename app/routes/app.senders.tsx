@@ -135,7 +135,7 @@ export default function SendersPage() {
 
   return (
     <Page>
-      <TitleBar title="Senders" />
+      <TitleBar title="Default Senders" />
       <BlockStack gap="400">
         {!d.hasSecret && (
           <Banner tone="warning" title="API key required">
@@ -164,14 +164,14 @@ export default function SendersPage() {
                 <Select
                   label="SMS Mode"
                   options={[
-                    { label: "Android devices", value: "devices" },
-                    { label: "Credits / gateway", value: "credits" },
+                    { label: "Android Devices", value: "devices" },
+                    { label: "Credits / Gateway", value: "credits" },
                   ]}
                   value={smsMode}
                   onChange={setSmsMode}
                 />
                 <Select
-                  label="Default SMS Device"
+                  label="Default SMS Sender"
                   options={smsDeviceOptions}
                   value={smsSelectValue}
                   onChange={(v) => {
@@ -179,11 +179,11 @@ export default function SendersPage() {
                     else setSmsDevice(v);
                   }}
                   disabled={!d.hasSecret}
-                  helpText="Paired Android devices from your WhatsSMS account."
+                  helpText="Paired Android Devices from your WhatsSMS account."
                 />
                 {smsSelectValue === "__custom__" ? (
                   <TextField
-                    label="SMS device ID"
+                    label="SMS Device/Gateway ID"
                     name="defaultSmsDeviceId"
                     value={smsDevice}
                     onChange={setSmsDevice}
@@ -201,6 +201,7 @@ export default function SendersPage() {
                     else setWaAccount(v);
                   }}
                   disabled={!d.hasSecret}
+                  helpText="Connected WhatsApp Accounts from your WhatsSMS account."
                 />
                 {waSelectValue === "__custom__" ? (
                   <TextField
@@ -223,7 +224,7 @@ export default function SendersPage() {
                 URL Shortener
               </Text>
               <Text as="p" variant="bodySm" tone="subdued">
-                When enabled, WhatsSMS may shorten links in outgoing messages.
+                When enabled, WhatsSMS will automatically shorten the links in outgoing messages.
               </Text>
               <label>
                 <input
@@ -233,7 +234,7 @@ export default function SendersPage() {
                   checked={urlShortenerSms}
                   onChange={(e) => setUrlShortenerSms(e.currentTarget.checked)}
                 />{" "}
-                Enable in SMS messages
+                Enable for SMS Messages
               </label>
               <label>
                 <input
@@ -243,7 +244,7 @@ export default function SendersPage() {
                   checked={urlShortenerWhatsapp}
                   onChange={(e) => setUrlShortenerWhatsapp(e.currentTarget.checked)}
                 />{" "}
-                Enable in WhatsApp messages
+                Enable for WhatsApp Messages
               </label>
             </BlockStack>
           </Card>
