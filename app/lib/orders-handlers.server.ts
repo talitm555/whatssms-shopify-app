@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { Prisma } from "@prisma/client";
 import prisma from "../db.server";
 import { decryptSecret } from "./crypto.server";
 import { isLikelyCodOrder } from "./cod-detection.server";
@@ -356,11 +357,18 @@ export async function handleOrderUpdated(
   if (idRaw == null) return;
   const orderNumericId = String(idRaw);
 
-  const insert = await prisma.orderConfirmationNotification.createMany({
-    data: [{ shop, orderNumericId }],
-    skipDuplicates: true,
-  });
-  if (insert.count === 0) return;
+  // SQLite does not support `createMany({ skipDuplicates: true })`. Use `create` and
+  // treat unique violation (P2002) on (shop, orderNumericId) as idempotent no-op.
+  try {
+    await prisma.orderConfirmationNotification.create({
+      data: { shop, orderNumericId },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return;
+    }
+    throw err;
+  }
 
   await runNotificationForEvent(shop, admin, APP_ORDER_CONFIRMED_KEY, payload);
 }
