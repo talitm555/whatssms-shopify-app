@@ -1,5 +1,8 @@
-# Production stack: bind app to loopback only; TLS terminates at nginx on the host.
-# Postgres: publish 127.0.0.1:5432 on the postgres service (e.g. n8n compose), then use host.docker.internal in DATABASE_URL.
+# Optional local / manual production stack (same flags CI uses with `docker run`).
+# Default production path: GitHub Actions builds/pushes GHCR, then SSH deploy runs
+# `docker run` with only `.env` on the server — no git repo required (see DEPLOYMENT.md).
+#
+# Postgres: publish 127.0.0.1:5432 on the host, then use host.docker.internal in DATABASE_URL.
 # Optional worker: `docker compose -f docker-compose.prod.yml --profile with-worker up -d`
 # When using the worker, set DISABLE_ASYNC_JOB_SWEEP=1 on **both** app and job-worker (see DEPLOYMENT.md).
 

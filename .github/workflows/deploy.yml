@@ -98,21 +98,10 @@ jobs:
           script: |
             set -euo pipefail
             DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
-            if [ ! -d "$DEPLOY_PATH" ]; then
-              echo "::error::Deploy path does not exist: $DEPLOY_PATH"
-              echo "One-time: git clone https://github.com/${{ github.repository }}.git \"$DEPLOY_PATH\" && cd \"$DEPLOY_PATH\" && git checkout main"
-              exit 1
-            fi
+            CONTAINER_APP="${{ vars.DEPLOY_CONTAINER_NAME }}"
+            [ -z "$CONTAINER_APP" ] && CONTAINER_APP=whatssms-shopify-app
+            mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
-            if [ ! -d .git ]; then
-              echo "::error::Not a git repository: $DEPLOY_PATH (missing .git)."
-              echo "Remove the folder if it was created manually, then clone:"
-              echo "  git clone https://github.com/${{ github.repository }}.git \"$DEPLOY_PATH\""
-              echo "For a private repo use SSH or a PAT URL; see DEPLOYMENT.md."
-              exit 1
-            fi
-            git fetch origin main
-            git checkout -B main FETCH_HEAD
             rm -f .env
             umask 077
             {
@@ -126,9 +115,16 @@ jobs:
               echo "PORT=${PORT:-3150}"
               test -n "${APP_ENCRYPTION_SECRET:-}" && echo "APP_ENCRYPTION_SECRET=$APP_ENCRYPTION_SECRET" || true
               test -n "${DISABLE_ASYNC_JOB_SWEEP:-}" && echo "DISABLE_ASYNC_JOB_SWEEP=$DISABLE_ASYNC_JOB_SWEEP" || true
-              echo "SHOPIFY_APP_IMAGE=$SHOPIFY_APP_IMAGE"
             } > .env
             chmod 600 .env
             printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker pull "$SHOPIFY_APP_IMAGE"
+            docker stop "$CONTAINER_APP" 2>/dev/null || true
+            docker rm "$CONTAINER_APP" 2>/dev/null || true
+            docker run -d \
+              --name "$CONTAINER_APP" \
+              --restart unless-stopped \
+              -p 127.0.0.1:3150:3150 \
+              --add-host=host.docker.internal:host-gateway \
+              --env-file .env \
+              "$SHOPIFY_APP_IMAGE"
