@@ -30,26 +30,35 @@ postgresql://SHOPIFY_DB_USER:SHOPIFY_DB_PASSWORD@host.docker.internal:5432/shopi
 
 Linux Docker 20.10+ provides `host.docker.internal` when `extra_hosts: ["host.docker.internal:host-gateway"]` is set (already in `docker-compose.prod.yml`).
 
-## Server layout
+## Server layout (no git repo on the server)
 
-Recommended path (matches CI defaults):
+Production deploys use **only**:
+
+1. A directory on the server that holds **`.env`** (and nothing else is required).
+2. The **image from GHCR** (`docker pull` + `docker run`).
+
+You do **not** need to clone this repository on the host. The image already contains the built app; Shopify config/extensions are pushed from CI via `shopify app deploy`.
+
+Recommended layout:
 
 ```text
-/home/talit/shopify.whatssms.io/    # git clone of this repo (main branch)
-  ├── docker-compose.prod.yml
-  ├── .env                          # recreated each deploy by GitHub Actions (not committed)
-  └── …
+/home/talit/shopify.whatssms.io/    # DEPLOY_PATH: directory for .env only (name is arbitrary)
+  └── .env                          # recreated each deploy by GitHub Actions
 ```
-
-Permissions: the deploy user must own this directory (or have write access) and be allowed to run `docker compose`.
 
 **One-time server setup**
 
-1. Install Docker Engine + Compose plugin.
-2. Clone the repository:  
-   `git clone <your-repo-url> /home/talit/shopify.whatssms.io`
-3. Ensure `docker-compose.prod.yml` is present at repo root (committed in this project).
-4. Configure nginx (see below). You do **not** need to create `.env` by hand if you use the provided deploy workflow; the first successful deploy writes it.
+1. Install Docker Engine (and ensure your user can run `docker`).
+2. Create the deploy directory (empty is fine):
+
+   ```bash
+   sudo mkdir -p /home/talit/shopify.whatssms.io
+   sudo chown talit:talit /home/talit/shopify.whatssms.io
+   ```
+
+3. Configure nginx (see below). The first successful **Deploy** workflow run will write `.env`, log in to GHCR, pull the image, and start the container.
+
+Optional GitHub **Variable** `DEPLOY_CONTAINER_NAME`: Docker container name for the web app (default `whatssms-shopify-app`). Change it if you run multiple stacks on one host.
 
 ## nginx (TLS → app)
 
@@ -78,23 +87,40 @@ server {
 
 `X-Forwarded-Proto` and `Host` are important for OAuth and embedded admin URLs. COD pages use `X-Forwarded-For` / `X-Real-IP` for metadata and in-memory rate limits.
 
-## Docker Compose (production)
+## Docker on the server (CI vs optional Compose)
 
-[`docker-compose.prod.yml`](docker-compose.prod.yml) binds the app to **loopback only**:
+**What GitHub Actions does:** `docker pull "$SHOPIFY_APP_IMAGE"` then `docker run` with:
 
-- `127.0.0.1:3150:3150`
+- `-p 127.0.0.1:3150:3150`
+- `--add-host=host.docker.internal:host-gateway`
+- `--env-file .env` (all runtime secrets/vars except the image ref, which is the `docker run` image argument)
 
-Set **`SHOPIFY_APP_IMAGE`** to your GHCR image, e.g. `ghcr.io/your-org/your-repo:main`. The deploy workflow writes this into `.env` automatically.
+[`docker-compose.prod.yml`](docker-compose.prod.yml) is **optional**: use it for local prod-like tests or if you prefer Compose on the server manually; it is **not** required for the default SSH deploy.
 
 ### Optional dedicated `AsyncJob` worker
 
-If you run a **second** service that only polls `processPendingJobs`, set **`DISABLE_ASYNC_JOB_SWEEP=1`** on **both** the web app and the worker so only one mechanism drains jobs (see [`app/lib/jobs.server.ts`](app/lib/jobs.server.ts)).
+If you run a **second** container that only runs `npm run job-worker`, set **`DISABLE_ASYNC_JOB_SWEEP=1`** in the shared `.env` (GitHub **Variables**) so the web container does not also run the 15s sweep (see [`app/lib/jobs.server.ts`](app/lib/jobs.server.ts)).
+
+Example (run from `DEPLOY_PATH` after `.env` exists; adjust image name):
+
+```bash
+docker stop whatssms-shopify-job-worker 2>/dev/null || true
+docker rm whatssms-shopify-job-worker 2>/dev/null || true
+docker run -d \
+  --name whatssms-shopify-job-worker \
+  --restart unless-stopped \
+  --add-host=host.docker.internal:host-gateway \
+  --env-file .env \
+  -e DISABLE_ASYNC_JOB_SWEEP=1 \
+  ghcr.io/your-org/your-repo:main \
+  npm run job-worker
+```
+
+Or use Compose with the `with-worker` profile on a machine that **does** have the repo file:
 
 ```bash
 docker compose -f docker-compose.prod.yml --profile with-worker up -d
 ```
-
-When using this profile, add to `.env` (or GitHub **Variables**): `DISABLE_ASYNC_JOB_SWEEP=1`.
 
 ## GitHub Actions
 
@@ -102,7 +128,7 @@ When using this profile, add to `.env` (or GitHub **Variables**): `DISABLE_ASYNC
 - **[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)** — on push to `main` only:
   1. Build and push the Docker image to **GHCR** (`:main` and `:${{ github.sha }}`).
   2. Run **`shopify app deploy --force`** using a Partner CI token ([Shopify CLI in CI/CD](https://shopify.dev/docs/apps/tools/cli/ci-cd)).
-  3. **SSH** to the server: `git pull`, **remove** the old `.env`, write a **new** `.env` from GitHub variables/secrets, `docker login ghcr.io`, `docker compose pull && up -d`.
+  3. **SSH** to the server: `mkdir -p` **`DEPLOY_PATH`**, remove the old `.env`, write a new `.env`, `docker login ghcr.io`, **`docker pull`** the GHCR image, **`docker run`** (replaces the previous container by name). No git clone on the server.
 
 Whenever you add a new environment variable to the app, update **both** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) (remote `echo` lines) and your GitHub **Variables** / **Secrets** — you should not need to SSH in only to edit `.env`.
 
@@ -112,7 +138,8 @@ Whenever you add a new environment variable to the app, update **both** [`.githu
 |----------|-------------------|
 | `DEPLOY_HOST` | Server hostname or IP |
 | `DEPLOY_USER` | SSH user (e.g. `talit`) |
-| `DEPLOY_PATH` | App directory, e.g. `/home/talit/shopify.whatssms.io` |
+| `DEPLOY_PATH` | Directory for `.env` only, e.g. `/home/talit/shopify.whatssms.io` (created if missing) |
+| `DEPLOY_CONTAINER_NAME` | Optional; Docker name for the web container (default `whatssms-shopify-app`) |
 | `DEPLOY_SSH_PORT` | SSH port (optional; default `22`) |
 | `SHOPIFY_API_KEY` | Partner Dashboard API key |
 | `SCOPES` | Same as `shopify.app.toml` / `.env.example` |

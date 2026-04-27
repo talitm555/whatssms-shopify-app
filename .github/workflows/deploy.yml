@@ -97,8 +97,11 @@ jobs:
           envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
           script: |
             set -euo pipefail
-            cd "${{ vars.DEPLOY_PATH }}"
-            git pull origin main
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
+            CONTAINER_APP="${{ vars.DEPLOY_CONTAINER_NAME }}"
+            [ -z "$CONTAINER_APP" ] && CONTAINER_APP=whatssms-shopify-app
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
             rm -f .env
             umask 077
             {
@@ -112,9 +115,16 @@ jobs:
               echo "PORT=${PORT:-3150}"
               test -n "${APP_ENCRYPTION_SECRET:-}" && echo "APP_ENCRYPTION_SECRET=$APP_ENCRYPTION_SECRET" || true
               test -n "${DISABLE_ASYNC_JOB_SWEEP:-}" && echo "DISABLE_ASYNC_JOB_SWEEP=$DISABLE_ASYNC_JOB_SWEEP" || true
-              echo "SHOPIFY_APP_IMAGE=$SHOPIFY_APP_IMAGE"
             } > .env
             chmod 600 .env
             printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker pull "$SHOPIFY_APP_IMAGE"
+            docker stop "$CONTAINER_APP" 2>/dev/null || true
+            docker rm "$CONTAINER_APP" 2>/dev/null || true
+            docker run -d \
+              --name "$CONTAINER_APP" \
+              --restart unless-stopped \
+              -p 127.0.0.1:3150:3150 \
+              --add-host=host.docker.internal:host-gateway \
+              --env-file .env \
+              "$SHOPIFY_APP_IMAGE"
