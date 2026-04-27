@@ -43,7 +43,7 @@ If you have any questions, feel free to contact us.
 Regards,
 {{shop_name}}`;
 
-const DEFAULT_GATEWAY_HINTS = "Cash on Delivery, Bank Transfer";
+const DEFAULT_GATEWAY_HINTS = "Cash on Delivery(COD), Bank Transfer, Bank Deposit";
 
 const LEGACY_SMS =
   "Order {{order_name}} ({{order_total}}). Confirm or reject: {{confirm_url_sms}}";

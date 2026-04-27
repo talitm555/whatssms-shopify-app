@@ -1,0 +1,31 @@
+# Production stack: bind app to loopback only; TLS terminates at nginx on the host.
+# Postgres: publish 127.0.0.1:5432 on the postgres service (e.g. n8n compose), then use host.docker.internal in DATABASE_URL.
+# Optional worker: `docker compose -f docker-compose.prod.yml --profile with-worker up -d`
+# When using the worker, set DISABLE_ASYNC_JOB_SWEEP=1 on **both** app and job-worker (see DEPLOYMENT.md).
+
+services:
+  app:
+    image: ${SHOPIFY_APP_IMAGE:?Set SHOPIFY_APP_IMAGE e.g. ghcr.io/org/repo:main}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3150:3150"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3150"
+
+  job-worker:
+    profiles: ["with-worker"]
+    image: ${SHOPIFY_APP_IMAGE:?Set SHOPIFY_APP_IMAGE}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DISABLE_ASYNC_JOB_SWEEP: "1"
+    command: ["npm", "run", "job-worker"]

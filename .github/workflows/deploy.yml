@@ -1,0 +1,120 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name (lowercase)
+        id: image
+        run: echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}:main
+            ${{ steps.image.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  shopify-app-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli
+
+      - name: Shopify app deploy
+        env:
+          SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN }}
+        run: shopify app deploy --force
+
+  deploy-server:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, shopify-app-deploy]
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SHOPIFY_API_SECRET: ${{ secrets.SHOPIFY_API_SECRET }}
+          APP_ENCRYPTION_SECRET: ${{ secrets.APP_ENCRYPTION_SECRET }}
+          SHOPIFY_API_KEY: ${{ vars.SHOPIFY_API_KEY }}
+          SCOPES: ${{ vars.SCOPES }}
+          SHOPIFY_APP_URL: ${{ vars.SHOPIFY_APP_URL }}
+          WHATSSMS_API_BASE_URL: ${{ vars.WHATSSMS_API_BASE_URL }}
+          PORT: ${{ vars.PORT }}
+          DISABLE_ASYNC_JOB_SWEEP: ${{ vars.DISABLE_ASYNC_JOB_SWEEP }}
+          SHOPIFY_APP_IMAGE: ${{ needs.build-and-push.outputs.image }}:main
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME }}
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+          envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
+          script: |
+            set -euo pipefail
+            cd "${{ vars.DEPLOY_PATH }}"
+            git pull origin main
+            rm -f .env
+            umask 077
+            {
+              echo "NODE_ENV=production"
+              echo "DATABASE_URL=$DATABASE_URL"
+              echo "SHOPIFY_API_KEY=$SHOPIFY_API_KEY"
+              echo "SHOPIFY_API_SECRET=$SHOPIFY_API_SECRET"
+              echo "SCOPES=$SCOPES"
+              echo "SHOPIFY_APP_URL=$SHOPIFY_APP_URL"
+              echo "WHATSSMS_API_BASE_URL=$WHATSSMS_API_BASE_URL"
+              echo "PORT=${PORT:-3150}"
+              test -n "${APP_ENCRYPTION_SECRET:-}" && echo "APP_ENCRYPTION_SECRET=$APP_ENCRYPTION_SECRET" || true
+              test -n "${DISABLE_ASYNC_JOB_SWEEP:-}" && echo "DISABLE_ASYNC_JOB_SWEEP=$DISABLE_ASYNC_JOB_SWEEP" || true
+              echo "SHOPIFY_APP_IMAGE=$SHOPIFY_APP_IMAGE"
+            } > .env
+            chmod 600 .env
+            printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d

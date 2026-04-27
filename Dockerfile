@@ -1,21 +1,39 @@
-FROM node:18-alpine
-RUN apk add --no-cache openssl
+# Build: full install for Remix/Vite + Prisma
+FROM node:22-bookworm-slim AS builder
 
-EXPOSE 3000
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY prisma ./prisma
+COPY . .
+
+RUN npx prisma generate
+RUN npm run build
+
+# Run: production deps + Remix build + Prisma schema; `app/` + `scripts/` for optional `job-worker` (tsx)
+FROM node:22-bookworm-slim AS runner
+
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3150
 
 COPY package.json package-lock.json* ./
-
 RUN npm ci --omit=dev && npm cache clean --force
-# Remove CLI packages since we don't need them in production by default.
-# Remove this line if you want to run CLI commands in your container.
-RUN npm remove @shopify/cli
 
-COPY . .
+COPY prisma ./prisma
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/app ./app
+COPY --from=builder /app/scripts ./scripts
 
-RUN npm run build
+RUN npx prisma generate
+
+EXPOSE 3150
 
 CMD ["npm", "run", "docker-start"]

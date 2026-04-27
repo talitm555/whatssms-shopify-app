@@ -215,6 +215,7 @@ const ASYNC_JOB_SWEEP_MS = 15_000;
 
 function startAsyncJobSweepIfNeeded(): void {
   if (process.env.NODE_ENV === "test") return;
+  if (process.env.DISABLE_ASYNC_JOB_SWEEP === "1" || process.env.DISABLE_ASYNC_JOB_SWEEP === "true") return;
   if (typeof setInterval === "undefined") return;
   const g = globalThis as typeof globalThis & { __whatssmsAsyncJobSweepStarted?: boolean };
   if (g.__whatssmsAsyncJobSweepStarted) return;
