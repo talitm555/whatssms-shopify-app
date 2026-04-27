@@ -3,6 +3,7 @@ export const APP_ORDER_CONFIRMED_KEY = "app/order_confirmed" as const;
 
 export const NOTIFICATION_EVENT_OPTIONS = [
   { key: "customers/create", label: "Customer created" },
+  { key: "checkouts/update", label: "Abandoned cart recovery" },
   { key: "orders/create", label: "Order created" },
   { key: APP_ORDER_CONFIRMED_KEY, label: "Order confirmed" },
   { key: "orders/paid", label: "Order paid" },
@@ -17,6 +18,8 @@ export type NotificationEventKey = (typeof NOTIFICATION_EVENT_OPTIONS)[number]["
 const DEFAULT_TEMPLATES: Record<NotificationEventKey, string> = {
   "customers/create":
     "Welcome {{customer_first_name}}! Thanks for creating an account with {{shop_name}}.",
+  "checkouts/update":
+    "Hi {{customer_first_name}}, you left {{line_items_count}} item(s) in your cart at {{shop_name}}. Complete your checkout here: {{abandoned_checkout_url}}",
   "orders/create":
     "Hi {{customer_name}}, we received your order {{order_name}} for {{total}} {{currency}}. Thank you!",
   [APP_ORDER_CONFIRMED_KEY]:

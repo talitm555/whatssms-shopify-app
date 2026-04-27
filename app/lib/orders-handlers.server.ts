@@ -81,21 +81,25 @@ function formatLineItemsRest(order: Record<string, unknown>): string {
     .join("\n");
 }
 
+function checkoutToken(payload: Record<string, unknown>): string {
+  const raw = payload.token ?? payload.checkout_token ?? payload.cart_token;
+  return raw == null ? "" : String(raw);
+}
+
 export function buildOrderVars(
   order: Record<string, unknown>,
   shop: string,
   extra: TemplateVars = {},
 ): TemplateVars {
   const customer = (order.customer as Record<string, unknown>) || {};
-  const first = String(customer.first_name || "");
-  const last = String(customer.last_name || "");
+  const ship = order.shipping_address as Record<string, unknown> | undefined;
+  const bill = order.billing_address as Record<string, unknown> | undefined;
+  const first = String(customer.first_name || ship?.first_name || bill?.first_name || "");
+  const last = String(customer.last_name || ship?.last_name || bill?.last_name || "");
   const name =
     [first, last].filter(Boolean).join(" ") ||
     String(customer.email || order.email || "") ||
     "";
-
-  const ship = order.shipping_address as Record<string, unknown> | undefined;
-  const bill = order.billing_address as Record<string, unknown> | undefined;
   const shippingLines = (order.shipping_lines as Array<Record<string, unknown>>) || [];
   const firstShipTitle = shippingLines[0]?.title;
 
@@ -178,6 +182,12 @@ async function resolvePhoneForTopic(
   return pickPhone(payload);
 }
 
+export function isAbandonedCheckoutPayload(payload: Record<string, unknown>): boolean {
+  if (payload.completed_at) return false;
+  const recoveryUrl = String(payload.abandoned_checkout_url || "").trim();
+  return recoveryUrl.length > 0;
+}
+
 async function buildTemplateVarsForTopic(
   shop: string,
   admin: AdminGraphql | undefined,
@@ -186,6 +196,12 @@ async function buildTemplateVarsForTopic(
 ): Promise<TemplateVars> {
   if (topic === "customers/create") {
     return buildCustomerTemplateVars(payload, shop);
+  }
+  if (topic === "checkouts/update") {
+    return buildOrderVars(payload, shop, {
+      checkout_token: checkoutToken(payload),
+      abandoned_checkout_url: String(payload.abandoned_checkout_url || ""),
+    });
   }
   if (topic.startsWith("fulfillments/")) {
     const oid = payload.order_id;
