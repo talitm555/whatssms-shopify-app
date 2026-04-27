@@ -31,15 +31,24 @@ export async function enqueueJob(
   payload: Record<string, unknown>,
   options?: { runAfter?: Date },
 ): Promise<void> {
+  const runAfter = options?.runAfter ?? new Date();
   await prisma.asyncJob.create({
     data: {
       shop,
       type,
       payload: JSON.stringify(payload),
       status: "pending",
-      runAfter: options?.runAfter ?? new Date(),
+      runAfter,
     },
   });
+
+  // Do not run the processor immediately for future-dated jobs: it would still drain
+  // *other* due jobs for this shop (e.g. stale abandoned-checkout rows), causing an
+  // "instant" recovery while a new deferred job is scheduled for later.
+  const wakeImmediately = runAfter.getTime() <= Date.now() + 2_000;
+  if (!wakeImmediately) {
+    return;
+  }
 
   setImmediate(() => {
     void processPendingJobs(shop).catch((e) => console.error("job processor", e));
@@ -200,3 +209,19 @@ async function runAutomationMessageJob(shop: string, p: AutomationPayload): Prom
     }
   }
 }
+
+/** Poll interval so deferred jobs (e.g. abandoned checkout) run after `runAfter` without another webhook. */
+const ASYNC_JOB_SWEEP_MS = 15_000;
+
+function startAsyncJobSweepIfNeeded(): void {
+  if (process.env.NODE_ENV === "test") return;
+  if (typeof setInterval === "undefined") return;
+  const g = globalThis as typeof globalThis & { __whatssmsAsyncJobSweepStarted?: boolean };
+  if (g.__whatssmsAsyncJobSweepStarted) return;
+  g.__whatssmsAsyncJobSweepStarted = true;
+  setInterval(() => {
+    void processPendingJobs().catch((e) => console.error("async job sweep", e));
+  }, ASYNC_JOB_SWEEP_MS);
+}
+
+startAsyncJobSweepIfNeeded();
