@@ -1,21 +1,17 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
-import { Form, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import {
   AppProvider,
   BlockStack,
   Button,
   Card,
-  FormLayout,
+  InlineStack,
   Page,
   Text,
-  TextField,
 } from "@shopify/polaris";
 import polarisTranslations from "@shopify/polaris/locales/en.json";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
-import { useState } from "react";
-
-import { login } from "../../shopify.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
@@ -31,12 +27,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
-  return { showForm: Boolean(login) };
+  return {
+    appStoreListingUrl: process.env.SHOPIFY_APP_STORE_LISTING_URL || "https://apps.shopify.com/whatssms-io",
+  };
 };
 
 export default function IndexLanding() {
-  const { showForm } = useLoaderData<typeof loader>();
-  const [shop, setShop] = useState("");
+  const { appStoreListingUrl } = useLoaderData<typeof loader>();
 
   return (
     <AppProvider i18n={polarisTranslations}>
@@ -49,29 +46,16 @@ export default function IndexLanding() {
                   WhatsSMS.io for Shopify
                 </Text>
                 <Text as="p" tone="subdued">
-                  Connect your store to send SMS and WhatsApp via WhatsSMS. Open
-                  the app from the Shopify admin after install, or sign in with
-                  your shop domain below.
+                  WhatsSMS.io connects Shopify to SMS and WhatsApp messaging via
+                  the WhatsSMS platform.
                 </Text>
               </BlockStack>
-              {showForm && (
-                <Form method="post" action="/auth/login">
-                  <FormLayout>
-                    <TextField
-                      type="text"
-                      name="shop"
-                      label="Shop domain"
-                      helpText="e.g. your-store.myshopify.com"
-                      value={shop}
-                      onChange={setShop}
-                      autoComplete="on"
-                    />
-                    <Button submit variant="primary">
-                      Log in
-                    </Button>
-                  </FormLayout>
-                </Form>
-              )}
+              <InlineStack gap="300">
+                <Button variant="primary" url={appStoreListingUrl}>
+                  Install on Shopify
+                </Button>
+                <Button url="https://whatssms.io">Learn about WhatsSMS.io</Button>
+              </InlineStack>
             </BlockStack>
           </Card>
         </BlockStack>

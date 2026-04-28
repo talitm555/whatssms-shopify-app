@@ -83,6 +83,7 @@ jobs:
           SHOPIFY_API_KEY: ${{ vars.SHOPIFY_API_KEY }}
           SCOPES: ${{ vars.SCOPES }}
           SHOPIFY_APP_URL: ${{ vars.SHOPIFY_APP_URL }}
+          SHOPIFY_APP_STORE_LISTING_URL: ${{ vars.SHOPIFY_APP_STORE_LISTING_URL }}
           WHATSSMS_API_BASE_URL: ${{ vars.WHATSSMS_API_BASE_URL }}
           PORT: ${{ vars.PORT }}
           DISABLE_ASYNC_JOB_SWEEP: ${{ vars.DISABLE_ASYNC_JOB_SWEEP }}
@@ -94,11 +95,12 @@ jobs:
           username: ${{ vars.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
-          envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
+          envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,SHOPIFY_APP_STORE_LISTING_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
           script: |
             set -euo pipefail
             DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
             CONTAINER_APP="${{ vars.DEPLOY_CONTAINER_NAME }}"
+            : "${APP_ENCRYPTION_SECRET:?APP_ENCRYPTION_SECRET is required in production}"
             [ -z "$CONTAINER_APP" ] && CONTAINER_APP=whatssms-shopify-app
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
@@ -111,9 +113,10 @@ jobs:
               echo "SHOPIFY_API_SECRET=$SHOPIFY_API_SECRET"
               echo "SCOPES=$SCOPES"
               echo "SHOPIFY_APP_URL=$SHOPIFY_APP_URL"
+              test -n "${SHOPIFY_APP_STORE_LISTING_URL:-}" && echo "SHOPIFY_APP_STORE_LISTING_URL=$SHOPIFY_APP_STORE_LISTING_URL" || true
               echo "WHATSSMS_API_BASE_URL=$WHATSSMS_API_BASE_URL"
               echo "PORT=${PORT:-3150}"
-              test -n "${APP_ENCRYPTION_SECRET:-}" && echo "APP_ENCRYPTION_SECRET=$APP_ENCRYPTION_SECRET" || true
+              echo "APP_ENCRYPTION_SECRET=$APP_ENCRYPTION_SECRET"
               test -n "${DISABLE_ASYNC_JOB_SWEEP:-}" && echo "DISABLE_ASYNC_JOB_SWEEP=$DISABLE_ASYNC_JOB_SWEEP" || true
             } > .env
             chmod 600 .env

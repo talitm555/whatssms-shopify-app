@@ -1,66 +1,60 @@
-import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import {
   AppProvider as PolarisAppProvider,
+  BlockStack,
   Button,
   Card,
-  FormLayout,
+  InlineStack,
   Page,
   Text,
-  TextField,
 } from "@shopify/polaris";
 import polarisTranslations from "@shopify/polaris/locales/en.json";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 
 import { login } from "../../shopify.server";
 
-import { loginErrorMessage } from "./error.server";
-
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const errors = loginErrorMessage(await login(request));
+  await login(request);
 
-  return { errors, polarisTranslations };
+  return {
+    appStoreListingUrl: process.env.SHOPIFY_APP_STORE_LISTING_URL || "https://apps.shopify.com/whatssms-io",
+    polarisTranslations,
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const errors = loginErrorMessage(await login(request));
+  await login(request);
 
-  return {
-    errors,
-  };
+  return null;
 };
 
 export default function Auth() {
   const loaderData = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const [shop, setShop] = useState("");
-  const { errors } = actionData || loaderData;
 
   return (
     <PolarisAppProvider i18n={loaderData.polarisTranslations}>
       <Page>
         <Card>
-          <Form method="post">
-            <FormLayout>
+          <BlockStack gap="400">
+            <BlockStack gap="200">
               <Text variant="headingMd" as="h2">
-                Log in
+                Install WhatsSMS.io from Shopify
               </Text>
-              <TextField
-                type="text"
-                name="shop"
-                label="Shop domain"
-                helpText="example.myshopify.com"
-                value={shop}
-                onChange={setShop}
-                autoComplete="on"
-                error={errors.shop}
-              />
-              <Button submit>Log in</Button>
-            </FormLayout>
-          </Form>
+              <Text as="p" tone="subdued">
+                Start installation from the Shopify App Store or open the app
+                from your Shopify admin after it is installed.
+              </Text>
+            </BlockStack>
+            <InlineStack gap="300">
+              <Button variant="primary" url={loaderData.appStoreListingUrl}>
+                Install on Shopify
+              </Button>
+              <Button url="https://whatssms.io">Learn about WhatsSMS.io</Button>
+            </InlineStack>
+          </BlockStack>
         </Card>
       </Page>
     </PolarisAppProvider>

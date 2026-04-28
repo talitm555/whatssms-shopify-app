@@ -25,6 +25,12 @@
 
 - H1–H7: encryption secret, COD headers, favicon check, multi-replica rate limit note, env validation, Polaris minor bump.
 
+**Implementation status (codebase)**
+
+- B1–B3 implemented in the Shopify app code: API version now uses `2026-04`, public shop-domain login forms were removed, and the embedded connection page uses neutral account-usage wording.
+- H1–H5 implemented or documented: production encryption secret enforcement, test-only HMAC helper note, COD security headers, multi-replica rate-limit guidance, and runtime env validation.
+- Still manual/external before submission: privacy policy and terms updates on `whatssms.io`, Partner Dashboard automated checks, reinstall/OAuth checks, TLS verification, listing assets, and optional Polaris visual regression review.
+
 ---
 
 ## 2. Full rubric (shopify-app-store-review skill) — this codebase
