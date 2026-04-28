@@ -8,7 +8,7 @@ installGlobals({ nativeFetch: true });
 /**
  * Dev: open the app only via your public URL (e.g. Cloudflare tunnel → `SHOPIFY_APP_URL`).
  * HMR uses `wss` to that host (HTTPS / 443). Vite listens on `PORT` (default 3150) for the tunnel to forward to.
- * Prod: `SHOPIFY_APP_URL` on the server matches `shopify.app.toml` (`https://shopify.whatssms.io`).
+ * Prod: `SHOPIFY_APP_URL` on the server matches `shopify.app.toml` (`https://ecom.whatssms.io`).
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");

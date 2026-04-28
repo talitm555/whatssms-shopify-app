@@ -40,7 +40,7 @@ Authentication uses the **`secret`** query parameter (API key from Tools → API
 | Environment | App URL (browser / `SHOPIFY_APP_URL`) | Config file |
 |-------------|----------------------------------------|-------------|
 | **Development** | `https://shopify.talitmahmood.com` — set **`SHOPIFY_APP_URL`** to that origin (no `/app` path). Partner **`application_url`** should be `https://shopify.talitmahmood.com/app` so the iframe loads `/app`. | `shopify.app.dev.toml` (gitignored; copy from `shopify.app.dev.toml.example`) |
-| **Production** | `https://shopify.whatssms.io` — same pattern: **`application_url`** = `https://shopify.whatssms.io/app` in `shopify.app.toml`. | `shopify.app.toml` |
+| **Production** | `https://ecom.whatssms.io` — same pattern: **`application_url`** = `https://ecom.whatssms.io/app` in `shopify.app.toml`. | `shopify.app.toml` |
 
 **Local dev workflow**
 
@@ -57,7 +57,7 @@ Authentication uses the **`secret`** query parameter (API key from Tools → API
 
 Under **`[auth].redirect_urls`** in the dev TOML, include **`https://shopify.talitmahmood.com/auth/callback`** and **`https://shopify.talitmahmood.com/auth/session-token`** (same host as `application_url`).
 
-**Production:** keep **`application_url = "https://shopify.whatssms.io"`** in committed `shopify.app.toml`. Deploy with `shopify app deploy`.
+**Production:** keep **`application_url = "https://ecom.whatssms.io/app"`** in committed `shopify.app.toml`. Deploy with `shopify app deploy`.
 
 ### Requirements
 

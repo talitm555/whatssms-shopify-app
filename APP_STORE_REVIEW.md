@@ -30,7 +30,7 @@
 - B1–B3 implemented in the Shopify app code: API version now uses `2026-04`, public shop-domain login forms were removed, and the embedded connection page uses neutral account-usage wording.
 - H1–H5 implemented or documented: production encryption secret enforcement, test-only HMAC helper note, COD security headers, multi-replica rate-limit guidance, and runtime env validation.
 - Privacy policy and terms updates were implemented in `frontend-website`; listing icon/feature assets and listing copy were prepared under `listing-assets/`.
-- TLS verification passed for `whatssms.io` and `shopify.whatssms.io`; local policy-page visual checks passed.
+- TLS verification passed for `whatssms.io` and `ecom.whatssms.io`; local policy-page visual checks passed.
 - Still manual/external before submission: deploy the website updates, run Partner Dashboard automated checks and AI self-review from an authenticated Shopify Partner session, capture final embedded-app screenshots, and complete reinstall/OAuth checks in the dashboard/dev store.
 
 ---
@@ -65,7 +65,7 @@
 | 22 | (dup) Auth after install | see 18 | |
 | 23 | Redirect to app UI after OAuth | Pass | Standard Remix/Shopify template; [app/routes/_index](app/routes/_index/route.tsx) redirects embedded → `/app` |
 | 24 | OAuth on reinstall | Review | **Verify** uninstall → reinstall; session rows handled by [webhooks.app.uninstalled](app/routes/webhooks.app.uninstalled.tsx) + Prisma |
-| 25 | Valid TLS | Review | Production must use valid HTTPS; verify `https://shopify.whatssms.io` in browser + SSL Labs (human) |
+| 25 | Valid TLS | Review | Production must use valid HTTPS; verify `https://ecom.whatssms.io` in browser + SSL Labs (human) |
 | 26 | `read_all_orders` only if needed | Pass | Not requested in [shopify.app.toml](shopify.app.toml) |
 | 27 | `write_payment_mandate` | Pass | Not in scopes |
 | 28 | `write_checkout_extensions_apis` | Pass | Not in scopes / no TAE |
@@ -185,7 +185,7 @@ When a merchant installs the **WhatsSMS.io** application from the Shopify App St
 
 **Categories of data from Shopify (examples):** shop domain, OAuth access data needed to act on the merchant’s behalf, order and checkout identifiers, order financial and fulfillment fields, line items, and customer / shipping / billing contact fields (including name, email, and phone) when included in the payloads the merchant’s store sends to the app. We use this data to provide configuration, message templating, automation, log delivery, and in-product features you enable (such as order-related notifications and merchant-configured automations), including compliance webhooks as required by Shopify for public apps.
 
-**Sub-processors:** the hosting provider(s) and infrastructure you use to run `https://shopify.whatssms.io/`, the database used for the app, and the WhatsSMS API (`https://app.whatssms.io` or the URL you configure) as necessary to deliver message sending features. [List actual vendor names, e.g. Hetzner, AWS, etc.]
+**Sub-processors:** the hosting provider(s) and infrastructure you use to run `https://ecom.whatssms.io/`, the database used for the app, and the WhatsSMS API (`https://app.whatssms.io` or the URL you configure) as necessary to deliver message sending features. [List actual vendor names, e.g. Hetzner, AWS, etc.]
 
 **Access tokens and secrets:** access tokens and API secrets used to integrate with your platform are stored on servers only and are not exposed to the merchant’s web browser, except that merchants type their WhatsSMS API key into the embedded app UI which is then encrypted at rest (AES-256-GCM) on your app servers.  
 
@@ -275,8 +275,8 @@ npm run lint
 npm test
 npm run build
 # Optional: run against staging URL
-curl -sI https://shopify.whatssms.io/health | head -5
-curl -sI https://shopify.whatssms.io/favicon.png | head -5
+curl -sI https://ecom.whatssms.io/health | head -5
+curl -sI https://ecom.whatssms.io/favicon.png | head -5
 ```
 
 ---

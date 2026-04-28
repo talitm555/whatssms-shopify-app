@@ -1,10 +1,10 @@
 # WhatsSMS Shopify app — production deployment
 
-This document describes how the app runs in production on **Ubuntu 24** with **Docker**, **nginx** (TLS + reverse proxy), **PostgreSQL** (shared host or n8n stack), and **GitHub Actions** for CI/CD. The public app URL is **`https://shopify.whatssms.io`** (see [`shopify.app.toml`](shopify.app.toml)).
+This document describes how the app runs in production on **Ubuntu 24** with **Docker**, **nginx** (TLS + reverse proxy), **PostgreSQL** (shared host or n8n stack), and **GitHub Actions** for CI/CD. The public app URL is **`https://ecom.whatssms.io`** (see [`shopify.app.toml`](shopify.app.toml)).
 
 ## Architecture
 
-- **Browser / Shopify** → **nginx** (`shopify.whatssms.io`, TLS) → **`127.0.0.1:3150`** on the host → **Docker** container (`remix-serve`, `PORT=3150`).
+- **Browser / Shopify** → **nginx** (`ecom.whatssms.io`, TLS) → **`127.0.0.1:3150`** on the host → **Docker** container (`remix-serve`, `PORT=3150`).
 - **PostgreSQL**: dedicated database for this app (not n8n’s database name). The app container reaches Postgres on the host via **`host.docker.internal:5432`** when Postgres is published on loopback (see below).
 - **Redis**: not used by this app (queues use the **`AsyncJob`** Postgres table; COD rate limits are **in-process** per container).
 - **Health**: `GET /health` (process up), `GET /ready` (Postgres `SELECT 1`).
@@ -42,7 +42,7 @@ You do **not** need to clone this repository on the host. The image already cont
 Recommended layout:
 
 ```text
-/home/talit/shopify.whatssms.io/    # DEPLOY_PATH: directory for .env only (name is arbitrary)
+/home/talit/ecom.whatssms.io/    # DEPLOY_PATH: directory for .env only (name is arbitrary)
   └── .env                          # recreated each deploy by GitHub Actions
 ```
 
@@ -52,8 +52,8 @@ Recommended layout:
 2. Create the deploy directory (empty is fine):
 
    ```bash
-   sudo mkdir -p /home/talit/shopify.whatssms.io
-   sudo chown talit:talit /home/talit/shopify.whatssms.io
+   sudo mkdir -p /home/talit/ecom.whatssms.io
+   sudo chown talit:talit /home/talit/ecom.whatssms.io
    ```
 
 3. Configure nginx (see below). The first successful **Deploy** workflow run will write `.env`, log in to GHCR, pull the image, and start the container.
@@ -67,7 +67,7 @@ Terminate SSL on nginx and proxy to the bound container port:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name shopify.whatssms.io;
+    server_name ecom.whatssms.io;
 
     ssl_certificate     /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
@@ -138,12 +138,12 @@ Whenever you add a new environment variable to the app, update **both** [`.githu
 |----------|-------------------|
 | `DEPLOY_HOST` | Server hostname or IP |
 | `DEPLOY_USER` | SSH user (e.g. `talit`) |
-| `DEPLOY_PATH` | Directory for `.env` only, e.g. `/home/talit/shopify.whatssms.io` (created if missing) |
+| `DEPLOY_PATH` | Directory for `.env` only, e.g. `/home/talit/ecom.whatssms.io` (created if missing) |
 | `DEPLOY_CONTAINER_NAME` | Optional; Docker name for the web container (default `whatssms-shopify-app`) |
 | `DEPLOY_SSH_PORT` | SSH port (optional; default `22`) |
 | `SHOPIFY_API_KEY` | Partner Dashboard API key |
 | `SCOPES` | Same as `shopify.app.toml` / `.env.example` |
-| `SHOPIFY_APP_URL` | `https://shopify.whatssms.io` (no `/app` suffix) |
+| `SHOPIFY_APP_URL` | `https://ecom.whatssms.io` (no `/app` suffix) |
 | `SHOPIFY_APP_STORE_LISTING_URL` | Public Shopify App Store listing URL |
 | `WHATSSMS_API_BASE_URL` | e.g. `https://app.whatssms.io` |
 | `PORT` | `3150` |

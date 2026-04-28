@@ -3,7 +3,7 @@
 client_id = "bc7662d24244b8f7f5afd69e0e5ab1d3"
 name = "WhatsSMS.io"
 # Load the embedded shell on `/app` (see app/routes/app.tsx). OAuth redirect URLs stay `/auth/*` on the same host.
-application_url = "https://shopify.whatssms.io/app"
+application_url = "https://ecom.whatssms.io/app"
 embedded = true
 
 [webhooks]
@@ -70,8 +70,8 @@ use_legacy_install_flow = false
 [auth]
 # Paths from @shopify/shopify-app-remix (authPathPrefix "/auth"): OAuth callback + embedded session-token exchange.
 redirect_urls = [
-  "https://shopify.whatssms.io/auth/callback",
-  "https://shopify.whatssms.io/auth/session-token",
+  "https://ecom.whatssms.io/auth/callback",
+  "https://ecom.whatssms.io/auth/session-token",
 ]
 
 [build]

@@ -1,6 +1,6 @@
 # Copy to shopify.app.dev.toml (gitignored).
 # Dev: public URL via Cloudflare Tunnel (e.g. https://shopify.talitmahmood.com) → 127.0.0.1:3150 (see .env PORT).
-# Prod uses shopify.app.toml (https://shopify.whatssms.io).
+# Prod uses shopify.app.toml (https://ecom.whatssms.io).
 # application_url should include `/app` so the admin iframe loads the authenticated shell directly.
 # [auth].redirect_urls use the same origin (no /app): /auth/callback, /auth/session-token.
 
