@@ -5,9 +5,15 @@ const IV_LEN = 12;
 const SALT = Buffer.from("whatssms-shopify-app-v1", "utf8");
 
 function getKey(): Buffer {
-  const secret = process.env.APP_ENCRYPTION_SECRET || process.env.SHOPIFY_API_SECRET;
+  const secret =
+    process.env.APP_ENCRYPTION_SECRET ||
+    (process.env.NODE_ENV === "production" ? undefined : process.env.SHOPIFY_API_SECRET);
   if (!secret || secret.length < 16) {
-    throw new Error("APP_ENCRYPTION_SECRET (or SHOPIFY_API_SECRET fallback) must be set to encrypt credentials");
+    throw new Error(
+      process.env.NODE_ENV === "production"
+        ? "APP_ENCRYPTION_SECRET must be set to encrypt credentials in production"
+        : "APP_ENCRYPTION_SECRET (or SHOPIFY_API_SECRET fallback) must be set to encrypt credentials",
+    );
   }
   return scryptSync(secret, SALT, 32);
 }

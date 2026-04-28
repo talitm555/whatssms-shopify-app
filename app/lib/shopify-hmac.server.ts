@@ -1,8 +1,11 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /**
+ * @test-only
+ *
  * Verifies `X-Shopify-Hmac-Sha256` for a raw webhook body (Shopify docs).
- * Exported for unit tests; prefer `authenticate.webhook` in route handlers.
+ * Exported for unit tests; never use this in production routes. Route handlers
+ * must prefer `authenticate.webhook`.
  */
 export function verifyShopifyWebhookHmac(
   rawBody: string,

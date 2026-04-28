@@ -5,7 +5,7 @@ Embedded Shopify admin app (Remix + Polaris + App Bridge) that connects a mercha
 ## Features
 
 - **OAuth + offline sessions** via `@shopify/shopify-app-remix` (App Store distribution).
-- **WhatsSMS API key** stored **encrypted at rest** (AES-256-GCM; key from `APP_ENCRYPTION_SECRET`, or `SHOPIFY_API_SECRET` if unset).
+- **WhatsSMS API key** stored **encrypted at rest** (AES-256-GCM; key from `APP_ENCRYPTION_SECRET`; local development can fall back to `SHOPIFY_API_SECRET`).
 - **Admin navigation**: Connection (API health + subscription usage), Senders (default SMS/WhatsApp devices), Placeholders (template variable reference), COD Confirmations, Customer Notifications (per–webhook-topic automations), About.
 - **Connection**: first-time API key capture (host from `WHATSSMS_API_BASE_URL` only), live `/api/get/credits` + `/api/get/subscription` status on each load when a key exists.
 - **Customer Notifications**: one saved rule per event type (Shopify topics: `customers/create`, `checkouts/update` for abandoned cart recovery, `orders/create`, `orders/paid`, `orders/cancelled`, `fulfillments/create`, `fulfillments/update`, plus app event **Order confirmed** driven by `orders/updated` when confirmation tags are present) with SMS / WhatsApp channels and templates (consent-aware when Shopify includes SMS marketing fields on order payloads). **Abandoned cart** uses Shopify’s recovery URL on `checkouts/update`, but the app **defers sending** until **N minutes after the last checkout update** (merchant-configurable when creating or editing that notification) and **cancels** the pending message if the checkout completes.
@@ -76,7 +76,8 @@ Copy `.env.example` to `.env` and fill:
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | From Partner Dashboard. |
 | `SCOPES` | Must match `shopify.app.toml` (orders, customers, checkouts, fulfillments read). |
 | `SHOPIFY_APP_URL` | Public HTTPS URL of the app (tunnel in dev). |
-| `APP_ENCRYPTION_SECRET` | Strong secret for encrypting WhatsSMS API keys (recommended). |
+| `APP_ENCRYPTION_SECRET` | Strong secret for encrypting WhatsSMS API keys. Required in production. |
+| `SHOPIFY_APP_STORE_LISTING_URL` | Public Shopify App Store listing URL used by non-embedded landing pages. |
 | `WHATSSMS_API_BASE_URL` | WhatsSMS API host if not using the default. |
 
 ### Install & DB
@@ -146,4 +147,4 @@ After changing scopes, merchants must re-authorize.
 - **Moving an old local SQLite dev DB to Postgres:** see [`MIGRATION_SQLITE_TO_POSTGRES.md`](MIGRATION_SQLITE_TO_POSTGRES.md).
 - Migrations run in **CI** and on container start (`npm run setup` → `prisma migrate deploy`).
 - **`AsyncJob`** uses Postgres; optional **worker** container for dedicated polling (documented in `DEPLOYMENT.md`).
-- **Health checks** (`/health`, `/ready`) and **in-memory rate limits** on public `/cod/*` (see `DEPLOYMENT.md` for scaling caveats).
+- **Health checks** (`/health`, `/ready`) and **in-memory rate limits** on public `/cod/*` (for multiple app replicas, use nginx/Cloudflare rate limiting or a shared store such as Redis).

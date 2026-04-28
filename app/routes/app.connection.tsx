@@ -39,7 +39,7 @@ function apiBase(): string {
   return defaultWhatssmsBaseUrl();
 }
 
-type SubscriptionUsage = Record<
+type AccountUsage = Record<
   string,
   { used?: number; limit?: number } | undefined
 >;
@@ -59,11 +59,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     message: "",
     creditsDisplay: null,
   };
-  let subscription: {
+  let accountUsage: {
     ok: boolean;
     message: string;
-    packageName?: string;
-    usage?: SubscriptionUsage;
+    usage?: AccountUsage;
   } = { ok: false, message: "" };
 
   if (hasSecret && row?.encryptedWhatssmsSecret) {
@@ -99,15 +98,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
     try {
       const subJson = await client.getSubscription();
-      const env = readWhatssmsEnvelope<{ name?: string; usage?: SubscriptionUsage }>(subJson);
-      subscription = {
+      const env = readWhatssmsEnvelope<{ usage?: AccountUsage }>(subJson);
+      accountUsage = {
         ok: env.ok,
-        message: env.ok ? "" : env.message || "Subscription unavailable for this key.",
-        packageName: env.data?.name,
+        message: env.ok ? "" : env.message || "Account usage unavailable for this key.",
         usage: env.data?.usage,
       };
     } catch (e) {
-      subscription = {
+      accountUsage = {
         ok: false,
         message: e instanceof Error ? e.message : String(e),
       };
@@ -118,7 +116,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     shop,
     hasSecret,
     connection,
-    subscription,
+    accountUsage,
     whatssmsKeysUrl: whatssmsDashboardToolsKeysUrl(),
   };
 };
@@ -169,7 +167,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ConnectionPage() {
-  const { hasSecret, connection, subscription, whatssmsKeysUrl } = useLoaderData<typeof loader>();
+  const { hasSecret, connection, accountUsage, whatssmsKeysUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const nav = useNavigation();
   const busy = nav.state !== "idle";
@@ -179,8 +177,8 @@ export default function ConnectionPage() {
     if (actionData && "ok" in actionData && actionData.ok) setApiKey("");
   }, [actionData]);
 
-  const usageEntries = subscription.usage
-    ? (Object.entries(subscription.usage).filter(
+  const usageEntries = accountUsage.usage
+    ? (Object.entries(accountUsage.usage).filter(
         ([, v]) => v && typeof v === "object" && "used" in v && "limit" in v,
       ) as [string, { used?: number; limit?: number }][])
     : [];
@@ -270,8 +268,8 @@ export default function ConnectionPage() {
                   </Text>
                   <Text as="p" variant="bodySm" tone="subdued">
                     These credits apply when you send SMS through the WhatsSMS gateway (credits mode),
-                    not when messages are sent from your own paired Android device. Subscription quotas
-                    and per-feature limits are shown in the section below.
+                    not when messages are sent from your own paired Android device. Account limits are
+                    shown in the section below.
                   </Text>
                 </BlockStack>
               </Card>
@@ -280,31 +278,26 @@ export default function ConnectionPage() {
             <Card>
               <BlockStack gap="300">
                 <Text as="h2" variant="headingMd">
-                  Subscription &amp; Quota Details
+                  WhatsSMS account usage
                 </Text>
-                {!subscription.ok ? (
-                  <Banner tone="warning">{subscription.message || "Could not load subscription."}</Banner>
+                {!accountUsage.ok ? (
+                  <Banner tone="warning">{accountUsage.message || "Could not load account usage."}</Banner>
                 ) : (
-                  <>
-                    <Text as="p" variant="bodyMd">
-                      Package: <strong>{subscription.packageName || "—"}</strong>
-                    </Text>
-                    <BlockStack gap="200">
-                      {usageEntries.map(([key, v]) => {
-                        const used = Number(v?.used ?? 0);
-                        const limit = Number(v?.limit ?? 0);
-                        const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-                        return (
-                          <Box key={key} paddingBlockEnd="100">
-                            <Text as="p" variant="bodySm">
-                              {labelForUsageKey(key)} — {used} / {formatUsageLimit(limit)}
-                            </Text>
-                            {limit > 0 ? <ProgressBar progress={pct} size="small" /> : null}
-                          </Box>
-                        );
-                      })}
-                    </BlockStack>
-                  </>
+                  <BlockStack gap="200">
+                    {usageEntries.map(([key, v]) => {
+                      const used = Number(v?.used ?? 0);
+                      const limit = Number(v?.limit ?? 0);
+                      const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                      return (
+                        <Box key={key} paddingBlockEnd="100">
+                          <Text as="p" variant="bodySm">
+                            {labelForUsageKey(key)} — {used} / {formatUsageLimit(limit)}
+                          </Text>
+                          {limit > 0 ? <ProgressBar progress={pct} size="small" /> : null}
+                        </Box>
+                      );
+                    })}
+                  </BlockStack>
                 )}
               </BlockStack>
             </Card>

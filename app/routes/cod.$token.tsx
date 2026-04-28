@@ -23,6 +23,29 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: "Order confirmation" }];
 };
 
+export function headers() {
+  const csp = [
+    "default-src 'none'",
+    "base-uri 'none'",
+    "connect-src 'self'",
+    "font-src 'self' https://cdn.shopify.com data:",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "img-src 'self' https: data:",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://cdn.shopify.com",
+    "upgrade-insecure-requests",
+  ].join("; ");
+
+  return {
+    "Content-Security-Policy": csp,
+    "Permissions-Policy": "camera=(), microphone=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+  };
+}
+
 function clientMetaFromRequest(request: Request): {
   decisionIp: string | null;
   decisionUserAgent: string | null;

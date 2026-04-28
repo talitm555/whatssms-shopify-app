@@ -144,6 +144,7 @@ Whenever you add a new environment variable to the app, update **both** [`.githu
 | `SHOPIFY_API_KEY` | Partner Dashboard API key |
 | `SCOPES` | Same as `shopify.app.toml` / `.env.example` |
 | `SHOPIFY_APP_URL` | `https://shopify.whatssms.io` (no `/app` suffix) |
+| `SHOPIFY_APP_STORE_LISTING_URL` | Public Shopify App Store listing URL |
 | `WHATSSMS_API_BASE_URL` | e.g. `https://app.whatssms.io` |
 | `PORT` | `3150` |
 | `GHCR_USERNAME` | GitHub username for `docker login ghcr.io` (must match PAT owner) |
@@ -155,7 +156,7 @@ Whenever you add a new environment variable to the app, update **both** [`.githu
 |--------|---------|
 | `DATABASE_URL` | Full Postgres URL (includes password) |
 | `SHOPIFY_API_SECRET` | Partner Dashboard API secret |
-| `APP_ENCRYPTION_SECRET` | Optional; 32+ chars for AES-256-GCM (omit if you rely on API secret) |
+| `APP_ENCRYPTION_SECRET` | Required in production; 32+ chars for AES-256-GCM |
 | `SHOPIFY_CLI_PARTNERS_TOKEN` | For `shopify app deploy` ([create token](https://shopify.dev/docs/apps/tools/cli/ci-cd)) |
 | `DEPLOY_SSH_PRIVATE_KEY` | Private key for SSH (PEM) |
 | `GHCR_PULL_TOKEN` | Fine-grained PAT with **read:packages** so the server can `docker pull` from GHCR |
@@ -180,16 +181,17 @@ Aligned with [`.env.example`](.env.example):
 | `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | OAuth |
 | `SCOPES` | Comma-separated |
 | `SHOPIFY_APP_URL` | Public origin without `/app` |
+| `SHOPIFY_APP_STORE_LISTING_URL` | Public Shopify App Store listing URL for public install CTAs |
 | `PORT` | `3150` inside container |
 | `WHATSSMS_API_BASE_URL` | WhatsSMS API host |
-| `APP_ENCRYPTION_SECRET` | Recommended in production |
+| `APP_ENCRYPTION_SECRET` | Required in production |
 | `SHOPIFY_APP_IMAGE` | Used by `docker-compose.prod.yml` |
 | `DISABLE_ASYNC_JOB_SWEEP` | `1` when using external worker only |
 | `COD_RATE_LIMIT_READ_PER_MIN` / `COD_RATE_LIMIT_WRITE_PER_MIN` | Optional overrides for public COD routes |
 
 ## COD rate limits
 
-Defaults: **120** GET-equivalent reads/min and **40** POST decisions/min per client IP (from `X-Forwarded-For` / `X-Real-IP`). In-memory only: if you scale to **multiple** app replicas, each has its own counters; use nginx rate limiting or a shared store if you need a global cap.
+Defaults: **120** GET-equivalent reads/min and **40** POST decisions/min per client IP (from `X-Forwarded-For` / `X-Real-IP`). In-memory only: if you scale to **multiple** app replicas, each has its own counters; use nginx/Cloudflare rate limiting or a shared store such as Redis if you need a global cap.
 
 ## Operational notes
 
