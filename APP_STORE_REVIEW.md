@@ -29,7 +29,9 @@
 
 - B1–B3 implemented in the Shopify app code: API version now uses `2026-04`, public shop-domain login forms were removed, and the embedded connection page uses neutral account-usage wording.
 - H1–H5 implemented or documented: production encryption secret enforcement, test-only HMAC helper note, COD security headers, multi-replica rate-limit guidance, and runtime env validation.
-- Still manual/external before submission: privacy policy and terms updates on `whatssms.io`, Partner Dashboard automated checks, reinstall/OAuth checks, TLS verification, listing assets, and optional Polaris visual regression review.
+- Privacy policy and terms updates were implemented in `frontend-website`; listing icon/feature assets and listing copy were prepared under `listing-assets/`.
+- TLS verification passed for `whatssms.io` and `shopify.whatssms.io`; local policy-page visual checks passed.
+- Still manual/external before submission: deploy the website updates, run Partner Dashboard automated checks and AI self-review from an authenticated Shopify Partner session, capture final embedded-app screenshots, and complete reinstall/OAuth checks in the dashboard/dev store.
 
 ---
 
