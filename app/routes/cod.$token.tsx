@@ -59,7 +59,7 @@ function clientMetaFromRequest(request: Request): {
     decisionIp: ip,
     decisionUserAgent: request.headers.get("user-agent"),
     decisionLanguage: request.headers.get("accept-language"),
-    decisionReferer: request.headers.get("referer"),
+    decisionReferer: request.headers.get("referer") || request.url,
   };
 }
 
