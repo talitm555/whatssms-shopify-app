@@ -9,13 +9,11 @@ import {
   Badge,
   Banner,
   BlockStack,
-  Box,
   Button,
   Card,
   InlineStack,
   Link,
   Page,
-  ProgressBar,
   Text,
   TextField,
 } from "@shopify/polaris";
@@ -24,11 +22,6 @@ import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { readWhatssmsEnvelope } from "../lib/whatssms-response.server";
-import {
-  formatUsageLimit,
-  labelForUsageKey,
-  sortUsageEntries,
-} from "../lib/whatssms-usage-labels";
 import {
   defaultWhatssmsBaseUrl,
   WhatssmsClient,
@@ -39,73 +32,32 @@ function apiBase(): string {
   return defaultWhatssmsBaseUrl();
 }
 
-type AccountUsage = Record<
-  string,
-  { used?: number; limit?: number } | undefined
->;
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
   const row = await prisma.shopSettings.findUnique({ where: { shop } });
   const hasSecret = Boolean(row?.encryptedWhatssmsSecret);
 
-  let connection: {
-    ok: boolean;
-    message: string;
-    creditsDisplay: { amount: number; currency: string } | null;
-  } = {
+  let connection: { ok: boolean; message: string } = {
     ok: false,
     message: "",
-    creditsDisplay: null,
   };
-  let accountUsage: {
-    ok: boolean;
-    message: string;
-    usage?: AccountUsage;
-  } = { ok: false, message: "" };
 
   if (hasSecret && row?.encryptedWhatssmsSecret) {
     const { decryptSecret } = await import("../lib/crypto.server");
     const secret = decryptSecret(row.encryptedWhatssmsSecret);
     const client = new WhatssmsClient(apiBase(), secret);
     try {
-      const creditsJson = await client.getCredits();
-      const env = readWhatssmsEnvelope(creditsJson);
-      let creditsDisplay: { amount: number; currency: string } | null = null;
-      if (env.ok && env.data != null && typeof env.data === "object") {
-        const data = env.data as Record<string, unknown>;
-        const raw = data.credits;
-        const amount = typeof raw === "number" ? raw : Number(raw);
-        if (Number.isFinite(amount)) {
-          creditsDisplay = {
-            amount,
-            currency: String(data.currency ?? "USD"),
-          };
-        }
-      }
+      const json = await client.getShorteners();
+      const env = readWhatssmsEnvelope(json);
       connection = {
         ok: env.ok,
-        message: env.ok ? "API connected successfully." : env.message || "API connection failed.",
-        creditsDisplay,
+        message: env.ok
+          ? "API connected successfully."
+          : env.message || "API connection failed.",
       };
     } catch (e) {
       connection = {
-        ok: false,
-        message: e instanceof Error ? e.message : String(e),
-        creditsDisplay: null,
-      };
-    }
-    try {
-      const subJson = await client.getSubscription();
-      const env = readWhatssmsEnvelope<{ usage?: AccountUsage }>(subJson);
-      accountUsage = {
-        ok: env.ok,
-        message: env.ok ? "" : env.message || "Account usage unavailable for this key.",
-        usage: env.data?.usage,
-      };
-    } catch (e) {
-      accountUsage = {
         ok: false,
         message: e instanceof Error ? e.message : String(e),
       };
@@ -116,7 +68,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     shop,
     hasSecret,
     connection,
-    accountUsage,
     whatssmsKeysUrl: whatssmsDashboardToolsKeysUrl(),
   };
 };
@@ -132,12 +83,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const client = new WhatssmsClient(apiBase(), apiSecret);
   try {
-    const creditsJson = await client.getCredits();
-    const env = readWhatssmsEnvelope(creditsJson);
+    const json = await client.getShorteners();
+    const env = readWhatssmsEnvelope(json);
     if (!env.ok) {
       return {
         ok: false as const,
-        error: env.message || "API key validation failed.",
+        error:
+          env.message ||
+          "API key validation failed. Ensure the key has the get_shorteners permission (Tools → API Keys).",
       };
     }
   } catch (e) {
@@ -167,7 +120,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ConnectionPage() {
-  const { hasSecret, connection, accountUsage, whatssmsKeysUrl } = useLoaderData<typeof loader>();
+  const { hasSecret, connection, whatssmsKeysUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const nav = useNavigation();
   const busy = nav.state !== "idle";
@@ -176,13 +129,6 @@ export default function ConnectionPage() {
   useEffect(() => {
     if (actionData && "ok" in actionData && actionData.ok) setApiKey("");
   }, [actionData]);
-
-  const usageEntries = accountUsage.usage
-    ? (Object.entries(accountUsage.usage).filter(
-        ([, v]) => v && typeof v === "object" && "used" in v && "limit" in v,
-      ) as [string, { used?: number; limit?: number }][])
-    : [];
-  sortUsageEntries(usageEntries);
 
   return (
     <Page>
@@ -194,7 +140,8 @@ export default function ConnectionPage() {
             <Link url={whatssmsKeysUrl} target="_blank" removeUnderline>
               open dashboard
             </Link>
-            ).
+            ). Enable permission for <strong>get shorteners</strong> so the app can verify your key.
+            This Shopify app is free; messaging costs are billed only on your WhatsSMS account if you use paid routes there.
           </p>
         </Banner>
         {actionData && "error" in actionData && actionData.error && (
@@ -225,7 +172,7 @@ export default function ConnectionPage() {
                     autoComplete="off"
                     value={apiKey}
                     onChange={setApiKey}
-                    helpText="We validate this key against the WhatsSMS API before saving."
+                    helpText="We validate your key with the WhatsSMS API (get shorteners) before saving. Nothing is shown except connected / error."
                   />
                   <Button submit variant="primary" loading={busy} disabled={!apiKey.trim()}>
                     Save and connect
@@ -251,54 +198,6 @@ export default function ConnectionPage() {
                 <Text as="p" variant="bodySm" tone="subdued">
                   {connection.message}
                 </Text>
-              </BlockStack>
-            </Card>
-
-            {connection.ok && connection.creditsDisplay ? (
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Account Credits
-                  </Text>
-                  <Text as="p" variant="bodyMd">
-                    Credits:{" "}
-                    <strong>
-                      {connection.creditsDisplay.amount} {connection.creditsDisplay.currency}
-                    </strong>
-                  </Text>
-                  <Text as="p" variant="bodySm" tone="subdued">
-                    These credits apply when you send SMS through the WhatsSMS gateway (credits mode),
-                    not when messages are sent from your own paired Android device. Account limits are
-                    shown in the section below.
-                  </Text>
-                </BlockStack>
-              </Card>
-            ) : null}
-
-            <Card>
-              <BlockStack gap="300">
-                <Text as="h2" variant="headingMd">
-                  WhatsSMS account usage
-                </Text>
-                {!accountUsage.ok ? (
-                  <Banner tone="warning">{accountUsage.message || "Could not load account usage."}</Banner>
-                ) : (
-                  <BlockStack gap="200">
-                    {usageEntries.map(([key, v]) => {
-                      const used = Number(v?.used ?? 0);
-                      const limit = Number(v?.limit ?? 0);
-                      const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-                      return (
-                        <Box key={key} paddingBlockEnd="100">
-                          <Text as="p" variant="bodySm">
-                            {labelForUsageKey(key)} — {used} / {formatUsageLimit(limit)}
-                          </Text>
-                          {limit > 0 ? <ProgressBar progress={pct} size="small" /> : null}
-                        </Box>
-                      );
-                    })}
-                  </BlockStack>
-                )}
               </BlockStack>
             </Card>
 

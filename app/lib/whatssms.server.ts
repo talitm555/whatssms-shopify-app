@@ -25,14 +25,12 @@ export class WhatssmsClient {
     return u.toString();
   }
 
-  async getCredits(): Promise<WhatssmsJson> {
-    const res = await fetch(this.url("/api/get/credits"));
-    return res.json() as Promise<WhatssmsJson>;
-  }
-
-  /** Subscription package + usage quotas (premium accounts). */
-  async getSubscription(): Promise<WhatssmsJson> {
-    const res = await fetch(this.url("/api/get/subscription"));
+  /**
+   * Connectivity check — requires `get_shorteners` on the API key (Tools → API Keys).
+   * Used to validate the secret without exposing credits or subscription data in the Shopify admin UI.
+   */
+  async getShorteners(): Promise<WhatssmsJson> {
+    const res = await fetch(this.url("/api/get/shorteners"));
     return res.json() as Promise<WhatssmsJson>;
   }
 

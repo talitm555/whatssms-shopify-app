@@ -11,15 +11,15 @@
 
 | bucket | count |
 |--------|-------:|
-| Likely passing (rubric) | 24 |
-| Needs review | 3 |
-| Likely failing / must fix pre-submit | 3 |
+| Likely passing (rubric) | 27 |
+| Needs review | 2 |
+| Likely failing / must fix pre-submit | 0 |
 
-**Blockers to fix before submission**
+**Previously tracked blockers (resolved in codebase)**
 
-1. **B1** — `ApiVersion` in code does not match `api_version` in TOML (`2026-04` vs `January25`).
-2. **B2** — Public landing pages expose a **shop domain** text field (`/`, `/auth/login`) — conflicts with *Initiate installation from a Shopify-owned surface* automated check.
-3. **B3** — Connection page shows **“Package: …”** from WhatsSMS subscription; product owner wants **100% free Shopify app** framing. Remove “package” semantics; keep optional neutral usage rows only (no paywall, no “upgrade” language).
+1. **B1** — API version unified to `2026-04` / `ApiVersion.April26` in [app/shopify.server.ts](app/shopify.server.ts).
+2. **B2** — Public `/` and `/auth/login` use App Store CTAs only (no `TextField name="shop"`).
+3. **B3** — Connection page validates via `GET /api/get/shorteners` only; **no** credits, subscription, package, or usage UI (free-app framing).
 
 **Nice-to-have (Built for Shopify / review polish)**
 
@@ -27,7 +27,7 @@
 
 **Implementation status (codebase)**
 
-- B1–B3 implemented in the Shopify app code: API version now uses `2026-04`, public shop-domain login forms were removed, and the embedded connection page uses neutral account-usage wording.
+- B1–B3 implemented: `2026-04` API version, no public shop-domain form, Connection uses `/api/get/shorteners` for key validation only (no billing/subscription display).
 - H1–H5 implemented or documented: production encryption secret enforcement, test-only HMAC helper note, COD security headers, multi-replica rate-limit guidance, and runtime env validation.
 - Privacy policy and terms updates were implemented in `frontend-website`; listing icon/feature assets and listing copy were prepared under `listing-assets/`.
 - TLS verification passed for `whatssms.io` and `ecom.whatssms.io`; local policy-page visual checks passed.
@@ -52,7 +52,7 @@
 | 9 | Cheapest shipping default | Pass | N/A (no shipping option reorder) |
 | 10 | No unauthorized product copy | Pass | N/A |
 | 11 | No dev/agency marketplace | Pass | N/A |
-| 12 | Refunds only via original processor | Pass | N/A (no custom refund to wallet) |
+| 12 | Refunds only via original processor | Pass | COD reject uses `orderCancel` with `originalPaymentMethodsRefund: false` only for **unpaid/pending COD** flows where no card capture exists — documented on [cancelOrderCustomerReject](app/lib/order-admin.server.ts). No wallet/gift-card refunds. |
 | 13 | No capital/lending | Pass | N/A |
 | 14 | **Managed Pricing or Billing API** | Pass* | *Per product decision: **the Shopify app charges $0**; off-platform WhatsSMS product billing is separate. Listing must not imply Shopify subscription unlocks the integration. No `appSubscriptionCreate` in repo — **correct for a free app**. |
 | 15 | Implement billing API correctly if you charge | N/A | No in-app charge |
@@ -61,7 +61,7 @@
 | 18 | Auth immediately after install | Review | **Verify** in Partner pre-check + fresh install: OAuth first, no usable `/app` UI before auth |
 | 19 | No promos/ads in admin **extensions** | Pass | [extensions/](extensions/) is empty; in-app is standard embedded routes, not TOML admin actions/blocks. **Do not** add affiliate banners inside `/app/*` later. |
 | 20 | Max modal / fullscreen only on interaction | Pass | No ResourcePicker full-screen abuse found |
-| 21 | **No manual shop install field** | **Fail** | [app/routes/_index/route.tsx](app/routes/_index/route.tsx) and [app/routes/auth.login/route.tsx](app/routes/auth.login/route.tsx) — `TextField name="shop"`. **Fix: B2.** |
+| 21 | **No manual shop install field** | Pass | [app/routes/_index/route.tsx](app/routes/_index/route.tsx) / [app/routes/auth.login/route.tsx](app/routes/auth.login/route.tsx): App Store + marketing buttons only; no shop URL input. |
 | 22 | (dup) Auth after install | see 18 | |
 | 23 | Redirect to app UI after OAuth | Pass | Standard Remix/Shopify template; [app/routes/_index](app/routes/_index/route.tsx) redirects embedded → `/app` |
 | 24 | OAuth on reinstall | Review | **Verify** uninstall → reinstall; session rows handled by [webhooks.app.uninstalled](app/routes/webhooks.app.uninstalled.tsx) + Prisma |
@@ -143,20 +143,15 @@ rg 'name="shop"' shopify-app/app/routes
 
 ---
 
-### B3 — Neutralize “package / subscription” wording in embedded admin
+### B3 — Free Shopify app framing (no subscription/credits UI)
 
 **File:** [app/routes/app.connection.tsx](app/routes/app.connection.tsx)
 
-**Current (problematic for “free app” + promo optics):** heading “Subscription & Quota Details” and line “Package: **{subscription.packageName}**”.
+**Implemented:** Loader and save action call `WhatssmsClient.getShorteners()` (`GET /api/get/shorteners`) to verify the API key. Response data is **not** rendered. No credits card, no usage/progress bars, no package or subscription copy. Banner states the Shopify app is free and that WhatsSMS messaging may have separate account costs.
 
-**Change:**
+**API key:** Merchants must enable the **get shorteners** permission on the key (Tools → API Keys).
 
-- Rename section title to e.g. **“WhatsSMS account usage”** (not “Subscription & Quota” if you want zero subscription vocabulary in-Shopify; product owner can pick “Account limits” instead).
-- **Delete** the `<Text>Package: <strong>…` block entirely. Remove `packageName` from loader return if unused, or keep in loader for debugging only — do not render.
-- Keep the **per-key usage** rows and progress bars — they are informational, not a paywall, as long as there is **no** “Upgrade” link to whatssms.io pricing from this page.
-- Tweak subtitle under “Account Credits” to avoid “Subscription quotas” if you are scrubbing the word: e.g. “**Plan limits and feature quotas** in your WhatsSMS account (managed at whatssms.io) are shown below” — or drop the sentence and keep the technical rows only.
-
-**Acceptance:** No `Package:`, `subscription` (in UI copy), or pricing upsell links from `/app/*` → whatssms.io /pricing. API keys link to `dashboard/tools/keys` is OK.
+**Acceptance:** Grep: no `getSubscription`, `getCredits`, `creditsDisplay`, or usage labels in Connection; no `/pricing` upsell links from `/app/*`.
 
 ---
 
@@ -281,4 +276,4 @@ curl -sI https://ecom.whatssms.io/favicon.png | head -5
 
 ---
 
-*End of `APP_STORE_REVIEW.md` — hand this file to the coding agent to implement B1–B3 and H* items; copy policy sections to whatssms.io; then run Partner pre-checks and AI self-review before submit.*
+*End of `APP_STORE_REVIEW.md` — use for Partner pre-checks, manual OAuth/reinstall verification, TLS smoke tests, and AI self-review before submit. Policy paste blocks (§5–6) still apply to whatssms.io legal pages.*

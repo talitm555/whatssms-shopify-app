@@ -383,6 +383,11 @@ export async function appendOrderMerchantNote(
   }
 }
 
+/**
+ * COD reject flow only (see `cod.$token` route). These orders are unpaid pending/manual capture;
+ * there is no card capture to refund. `originalPaymentMethodsRefund: false` avoids instructing
+ * Shopify to run a card refund that does not apply — merchants handle any settlement in admin if needed.
+ */
 export async function cancelOrderCustomerReject(
   admin: AdminGraphql,
   orderGid: string,
