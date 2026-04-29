@@ -30,6 +30,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shopify_whatssms_ci?schema=public
+      # GitHub Actions: run JS actions on Node 24 (avoids Node 20 deprecation warning until defaults update)
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout

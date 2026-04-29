@@ -11,10 +11,13 @@ function joinBase(base: string): string {
 }
 
 export class WhatssmsClient {
-  constructor(
-    private readonly apiBase: string,
-    private readonly secret: string,
-  ) {}
+  private readonly apiBase: string;
+  private readonly secret: string;
+
+  constructor(apiBase: string, secret: string) {
+    this.apiBase = apiBase;
+    this.secret = secret;
+  }
 
   private url(path: string, extra: Record<string, string> = {}): string {
     const u = new URL(joinBase(this.apiBase) + path);
@@ -102,14 +105,4 @@ export class WhatssmsClient {
 
 export function defaultWhatssmsBaseUrl(): string {
   return process.env.WHATSSMS_API_BASE_URL?.trim() || "https://app.whatssms.io";
-}
-
-/** Dashboard → Tools → API Keys, same host as `WHATSSMS_API_BASE_URL`. */
-export function whatssmsDashboardToolsKeysUrl(): string {
-  const base = defaultWhatssmsBaseUrl().replace(/\/+$/, "");
-  try {
-    return new URL("/dashboard/tools/keys", `${base}/`).toString();
-  } catch {
-    return "https://app.whatssms.io/dashboard/tools/keys";
-  }
 }

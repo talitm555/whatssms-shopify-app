@@ -12,7 +12,6 @@ import {
   Button,
   Card,
   InlineStack,
-  Link,
   Page,
   Text,
   TextField,
@@ -22,11 +21,7 @@ import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { readWhatssmsEnvelope } from "../lib/whatssms-response.server";
-import {
-  defaultWhatssmsBaseUrl,
-  WhatssmsClient,
-  whatssmsDashboardToolsKeysUrl,
-} from "../lib/whatssms.server";
+import { defaultWhatssmsBaseUrl, WhatssmsClient } from "../lib/whatssms.server";
 
 function apiBase(): string {
   return defaultWhatssmsBaseUrl();
@@ -68,7 +63,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     shop,
     hasSecret,
     connection,
-    whatssmsKeysUrl: whatssmsDashboardToolsKeysUrl(),
   };
 };
 
@@ -120,7 +114,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ConnectionPage() {
-  const { hasSecret, connection, whatssmsKeysUrl } = useLoaderData<typeof loader>();
+  const { hasSecret, connection } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const nav = useNavigation();
   const busy = nav.state !== "idle";
@@ -136,7 +130,9 @@ export default function ConnectionPage() {
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
-            Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong>. Make sure to enable the <strong>sms_send, wa_send, get_devices, get_wa_accounts, get_shorteners</strong> permissions for the key.
+            Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong>. Make sure to enable the{" "}
+            <strong>sms_send, wa_send, get_devices, get_wa_accounts, get_shorteners</strong>{" "}
+            permissions for the key.
           </p>
         </Banner>
         {actionData && "error" in actionData && actionData.error && (
