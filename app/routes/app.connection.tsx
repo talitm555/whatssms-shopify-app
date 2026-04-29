@@ -136,12 +136,7 @@ export default function ConnectionPage() {
       <BlockStack gap="400">
         <Banner tone="info">
           <p>
-            Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong> (
-            <Link url={whatssmsKeysUrl} target="_blank" removeUnderline>
-              open dashboard
-            </Link>
-            ). Enable permission for <strong>get shorteners</strong> so the app can verify your key.
-            This Shopify app is free; messaging costs are billed only on your WhatsSMS account if you use paid routes there.
+            Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong>. Make sure to enable the <strong>sms_send, wa_send, get_devices, get_wa_accounts, get_shorteners</strong> permissions for the key.
           </p>
         </Banner>
         {actionData && "error" in actionData && actionData.error && (
