@@ -41,7 +41,7 @@ export default function Auth() {
           <BlockStack gap="400">
             <BlockStack gap="200">
               <Text variant="headingMd" as="h2">
-                Install WhatsSMS.io from Shopify
+                Install WhatsSMS from Shopify
               </Text>
               <Text as="p" tone="subdued">
                 Start installation from the Shopify App Store or open the app
@@ -52,7 +52,7 @@ export default function Auth() {
               <Button variant="primary" url={loaderData.appStoreListingUrl}>
                 Install on Shopify
               </Button>
-              <Button url="https://whatssms.io">Learn about WhatsSMS.io</Button>
+              <Button url="https://whatssms.io">Learn about WhatsSMS</Button>
             </InlineStack>
           </BlockStack>
         </Card>

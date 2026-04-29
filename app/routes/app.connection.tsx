@@ -157,7 +157,7 @@ export default function ConnectionPage() {
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
-                Connect WhatsSMS.io
+                Connect WhatsSMS
               </Text>
               <Text as="p" variant="bodyMd">
                 Enter your WhatsSMS API secret to enable messaging, COD confirmations, and customer

@@ -35,7 +35,7 @@ export default function Index() {
             <Card>
               <BlockStack gap="400">
                 <Text as="h1" variant="headingLg">
-                  WhatsSMS.io for Shopify
+                  WhatsSMS for Shopify
                 </Text>
                 <Text as="p" variant="bodyMd">
                   Connect your WhatsSMS account, configure Default Senders, COD Confirmations, and Customer Notifications.

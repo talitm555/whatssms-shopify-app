@@ -37,16 +37,16 @@ export default function IndexLanding() {
 
   return (
     <AppProvider i18n={polarisTranslations}>
-      <Page title="WhatsSMS.io">
+      <Page title="WhatsSMS">
         <BlockStack gap="400">
           <Card>
             <BlockStack gap="400">
               <BlockStack gap="200">
                 <Text variant="headingLg" as="h1">
-                  WhatsSMS.io for Shopify
+                  WhatsSMS for Shopify
                 </Text>
                 <Text as="p" tone="subdued">
-                  WhatsSMS.io connects Shopify to SMS and WhatsApp messaging via
+                  WhatsSMS connects Shopify to SMS and WhatsApp messaging via
                   the WhatsSMS platform.
                 </Text>
               </BlockStack>
@@ -54,7 +54,7 @@ export default function IndexLanding() {
                 <Button variant="primary" url={appStoreListingUrl}>
                   Install on Shopify
                 </Button>
-                <Button url="https://whatssms.io">Learn about WhatsSMS.io</Button>
+                <Button url="https://whatssms.io">Learn about WhatsSMS</Button>
               </InlineStack>
             </BlockStack>
           </Card>

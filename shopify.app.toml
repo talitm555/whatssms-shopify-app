@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "bc7662d24244b8f7f5afd69e0e5ab1d3"
-name = "WhatsSMS.io"
+name = "WhatsSMS"
 # Load the embedded shell on `/app` (see app/routes/app.tsx). OAuth redirect URLs stay `/auth/*` on the same host.
 application_url = "https://ecom.whatssms.io/app"
 embedded = true

@@ -5,7 +5,7 @@
 # [auth].redirect_urls use the same origin (no /app): /auth/callback, /auth/session-token.
 
 client_id = "YOUR_CLIENT_ID"
-name = "WhatsSMS.io"
+name = "WhatsSMS"
 application_url = "https://YOUR_DEV_HTTPS_HOST/app"
 embedded = true
 

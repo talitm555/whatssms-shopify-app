@@ -1,4 +1,4 @@
-# WhatsSMS.io — Shopify public app
+# WhatsSMS — Shopify public app
 
 Embedded Shopify admin app (Remix + Polaris + App Bridge) that connects a merchant’s [WhatsSMS](https://whatssms.io) account for SMS (Android / gateway) and WhatsApp messaging via the **WhatsSMS REST API** documented in the merchant dashboard (`/dashboard/docs`).
 
@@ -99,7 +99,7 @@ then Shopify has not yet allowed this app to register webhooks whose payloads in
 
 Do this once per app (dev stores do **not** require App Store review; see [Work with protected customer data](https://shopify.dev/docs/apps/launch/protected-customer-data)):
 
-1. In [Partner Dashboard](https://partners.shopify.com) → **Apps** → **WhatsSMS.io** (your app).
+1. In [Partner Dashboard](https://partners.shopify.com) → **Apps** → **WhatsSMS** (your app).
 2. Ensure a **distribution method** is selected for the app (required before PCD requests).
 3. Open **API access requests** (or **API access** in the app sidebar, depending on UI).
 4. Under **Protected customer data access**, choose **Request access**.

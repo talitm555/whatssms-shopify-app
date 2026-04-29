@@ -25,10 +25,10 @@ export default function AboutPage() {
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
-                WhatsSMS.io
+                WhatsSMS
               </Text>
               <Text as="p" variant="bodyMd">
-                WhatsSMS.io helps merchants send SMS and WhatsApp messages using Android devices, gateway
+                WhatsSMS helps merchants send SMS and WhatsApp messages using Android devices, gateway
                 credits, and WhatsApp Business accounts — all from one dashboard.
               </Text>
               <Text as="p" variant="bodyMd">
