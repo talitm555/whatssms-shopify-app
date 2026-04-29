@@ -1,9 +1,34 @@
 import { vitePlugin as remix } from "@remix-run/dev";
 import { installGlobals } from "@remix-run/node";
-import { defineConfig, loadEnv, type UserConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+// Relative path (not tsconfig alias): esbuild must resolve this while bundling vite.config.ts.
+import { alignForwardedHostForRemixCsrf } from "./scripts/remix-align-csrf-host.mjs";
+
 installGlobals({ nativeFetch: true });
+
+/**
+ * Remix 2.17+ CSRF: Shopify CLI/Vite can receive a proxied Host/Origin pair
+ * that does not match the public app URL. `loadEnv` reads `.env` from disk so
+ * trusted origins match the URL the browser actually opened.
+ */
+function remixForwardedHostCsrfPlugin(): Plugin {
+  return {
+    name: "remix-forwarded-host-csrf",
+    enforce: "pre",
+    configureServer(server) {
+      const env = loadEnv(server.config.mode, process.cwd(), "");
+      const appUrl = env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL;
+      const extraOrigins =
+        env.SHOPIFY_APP_EXTRA_ORIGINS || process.env.SHOPIFY_APP_EXTRA_ORIGINS;
+      server.middlewares.use((req, _res, next) => {
+        alignForwardedHostForRemixCsrf(req, appUrl, extraOrigins);
+        next();
+      });
+    },
+  };
+}
 
 /**
  * Dev: open the app only via your public URL (e.g. Cloudflare tunnel → `SHOPIFY_APP_URL`).
@@ -63,6 +88,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
+      remixForwardedHostCsrfPlugin(),
       remix({
         ignoredRouteFiles: ["**/.*"],
         future: {

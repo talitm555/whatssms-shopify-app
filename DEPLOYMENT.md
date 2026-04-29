@@ -4,7 +4,7 @@ This document describes how the app runs in production on **Ubuntu 24** with **D
 
 ## Architecture
 
-- **Browser / Shopify** → **nginx** (`ecom.whatssms.io`, TLS) → **`127.0.0.1:3150`** on the host → **Docker** container (`remix-serve`, `PORT=3150`).
+- **Browser / Shopify** → **nginx** (`ecom.whatssms.io`, TLS) → **`127.0.0.1:3150`** on the host → **Docker** container ([`prod-server.mjs`](scripts/prod-server.mjs) + `trust proxy` + CSRF host alignment, `PORT=3150`).
 - **PostgreSQL**: dedicated database for this app (not n8n’s database name). The app container reaches Postgres on the host via **`host.docker.internal:5432`** when Postgres is published on loopback (see below).
 - **Redis**: not used by this app (queues use the **`AsyncJob`** Postgres table; COD rate limits are **in-process** per container).
 - **Health**: `GET /health` (process up), `GET /ready` (Postgres `SELECT 1`).
@@ -76,6 +76,7 @@ server {
         proxy_pass http://127.0.0.1:3150;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;

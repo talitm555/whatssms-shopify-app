@@ -7,6 +7,7 @@ import { confirmationTagForChannel } from "../lib/cod-detection.server";
 import {
   appendOrderMerchantNote,
   cancelOrderCustomerReject,
+  type CodOrderLineItem,
   getOrderSummaryForCodPage,
 } from "../lib/order-admin.server";
 import { codRateLimitResponse } from "../lib/rate-limit.server";
@@ -256,12 +257,15 @@ export default function CodConfirmPage() {
       <div className="cod-page cod-page--done">
         <style>{`
           .cod-page--done {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif !important;
             background: #f1f1f1;
             min-height: 100vh;
             padding: 32px 16px 48px;
             color: #303030;
             -webkit-font-smoothing: antialiased;
+          }
+          .cod-page--done * {
+            font-family: Arial, Helvetica, sans-serif !important;
           }
           .cod-done-card {
             max-width: 560px;
@@ -537,7 +541,7 @@ export default function CodConfirmPage() {
                       Line items
                     </p>
                     <ul className="cod-done-lines">
-                      {data.summary.lineItems.map((li, i) => (
+                      {data.summary.lineItems.map((li: CodOrderLineItem, i: number) => (
                         <li key={i}>
                           {li.imageUrl ? (
                             <img src={li.imageUrl} alt="" width={36} height={36} />
@@ -708,7 +712,7 @@ export default function CodConfirmPage() {
         <div className="cod-section">
           <h2>Line items</h2>
           <ul className="cod-lines">
-            {s.lineItems.map((li, i) => (
+            {s.lineItems.map((li: CodOrderLineItem, i: number) => (
               <li key={i}>
                 {li.imageUrl ? <img src={li.imageUrl} alt="" /> : <div className="cod-logo" style={{ width: 44, height: 44 }} />}
                 <div style={{ flex: 1 }}>
