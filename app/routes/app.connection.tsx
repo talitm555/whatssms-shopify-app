@@ -131,7 +131,7 @@ export default function ConnectionPage() {
         <Banner tone="info">
           <p>
             Create API Keys in WhatsSMS under <strong>Tools → API Keys</strong>. Make sure to enable the{" "}
-            <strong>sms_send, wa_send, get_devices, get_wa_accounts, get_shorteners</strong>{" "}
+            <strong>sms_send, wa_send, get_devices, get_wa_accounts, get_shorteners, get_rates</strong>{" "}
             permissions for the key.
           </p>
         </Banner>

@@ -183,11 +183,14 @@ async function runAutomationMessageJob(shop: string, p: AutomationPayload): Prom
   const text = applyTemplate(p.template, p.templateVars || {});
 
   if (p.sendSms) {
+    const modeRaw = p.smsMode ?? settings.defaultSmsMode ?? "devices";
+    const smsMode = modeRaw === "credits" ? "credits" : "devices";
+    const senderId = p.smsDevice || settings.defaultSmsDeviceId || undefined;
     const smsRes = await client.sendSms({
       recipient: p.phone,
       message: text,
-      mode: p.smsMode === "credits" ? "credits" : "devices",
-      sim: p.smsDevice || settings.defaultSmsDeviceId || undefined,
+      mode: smsMode,
+      ...(smsMode === "credits" ? { gateway: senderId } : { device: senderId, sim: "1" }),
       ...(settings.urlShortenerSms ? { shortener: "1" } : {}),
     });
     const smsEnv = readWhatssmsEnvelope(smsRes);

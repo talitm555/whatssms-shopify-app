@@ -24,6 +24,8 @@ import prisma from "../db.server";
 import { decryptSecret } from "../lib/crypto.server";
 import {
   deviceSelectOptions,
+  gatewayPartnerSelectOptions,
+  readWhatssmsEnvelope,
   waAccountSelectOptions,
 } from "../lib/whatssms-response.server";
 import { defaultWhatssmsBaseUrl, WhatssmsClient } from "../lib/whatssms.server";
@@ -34,19 +36,31 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const row = await prisma.shopSettings.findUnique({ where: { shop } });
 
   let deviceOptions: { label: string; value: string }[] = [];
+  let creditsSmsOptions: { label: string; value: string }[] = [];
   let waOptions: { label: string; value: string }[] = [];
   let apiError: string | null = null;
+  let creditsRatesError: string | null = null;
 
   if (row?.encryptedWhatssmsSecret) {
+    const secret = decryptSecret(row.encryptedWhatssmsSecret);
+    const base = row.whatssmsApiBaseUrl || defaultWhatssmsBaseUrl();
+    const client = new WhatssmsClient(base, secret);
     try {
-      const secret = decryptSecret(row.encryptedWhatssmsSecret);
-      const base = row.whatssmsApiBaseUrl || defaultWhatssmsBaseUrl();
-      const client = new WhatssmsClient(base, secret);
       const [devicesJson, waJson] = await Promise.all([client.getDevices(), client.getWaAccounts()]);
       deviceOptions = deviceSelectOptions(devicesJson);
       waOptions = waAccountSelectOptions(waJson);
     } catch (e) {
       apiError = e instanceof Error ? e.message : String(e);
+    }
+    try {
+      const ratesJson = await client.getRates();
+      creditsSmsOptions = gatewayPartnerSelectOptions(ratesJson);
+      const ratesEnv = readWhatssmsEnvelope(ratesJson);
+      if (!ratesEnv.ok) {
+        creditsRatesError = ratesEnv.message || `Error ${ratesEnv.status}`;
+      }
+    } catch (e) {
+      creditsRatesError = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -60,8 +74,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     urlShortenerSms: row?.urlShortenerSms ?? false,
     urlShortenerWhatsapp: row?.urlShortenerWhatsapp ?? false,
     deviceOptions,
+    creditsSmsOptions,
     waOptions,
     apiError,
+    creditsRatesError,
   };
 };
 
@@ -123,12 +139,20 @@ export default function SendersPage() {
       ? [{ label: "— Custom ID —", value: "__custom__" }, ...d.deviceOptions]
       : [{ label: "Enter device ID manually", value: "__custom__" }];
 
+  const smsCreditsOptions =
+    d.creditsSmsOptions.length > 0
+      ? [{ label: "— Custom ID —", value: "__custom__" }, ...d.creditsSmsOptions]
+      : [{ label: "Enter gateway or partner ID manually", value: "__custom__" }];
+
+  const smsSenderOptions = smsMode === "credits" ? smsCreditsOptions : smsDeviceOptions;
+  const smsSenderOptionValues = smsMode === "credits" ? d.creditsSmsOptions : d.deviceOptions;
+
   const waOptions =
     d.waOptions.length > 0
       ? [{ label: "— Custom ID —", value: "__custom__" }, ...d.waOptions]
       : [{ label: "Enter WhatsApp account ID manually", value: "__custom__" }];
 
-  const smsSelectValue = d.deviceOptions.some((o) => o.value === smsDevice)
+  const smsSelectValue = smsSenderOptionValues.some((o) => o.value === smsDevice)
     ? smsDevice
     : "__custom__";
   const waSelectValue = d.waOptions.some((o) => o.value === waAccount) ? waAccount : "__custom__";
@@ -145,6 +169,13 @@ export default function SendersPage() {
         {d.apiError && (
           <Banner tone="critical" title="WhatsSMS API">
             {d.apiError}
+          </Banner>
+        )}
+        {d.creditsRatesError && (
+          <Banner tone="warning" title="Gateway / partner list">
+            Could not load gateways and partners ({d.creditsRatesError}). Your API key needs the get_rates
+            permission for the dropdown to populate; you can still type a gateway id or partner device id
+            manually.
           </Banner>
         )}
         {actionData && "error" in actionData && actionData.error && (
@@ -172,18 +203,22 @@ export default function SendersPage() {
                 />
                 <Select
                   label="Default SMS Sender"
-                  options={smsDeviceOptions}
+                  options={smsSenderOptions}
                   value={smsSelectValue}
                   onChange={(v) => {
                     if (v === "__custom__") setSmsDevice("");
                     else setSmsDevice(v);
                   }}
                   disabled={!d.hasSecret}
-                  helpText="Paired Android Devices from your WhatsSMS account."
+                  helpText={
+                    smsMode === "credits"
+                      ? "Gateways and Partner Devices from GET /api/get/rates (requires get_rates permission on your API Key)."
+                      : "Paired Android Devices from your WhatsSMS account."
+                  }
                 />
                 {smsSelectValue === "__custom__" ? (
                   <TextField
-                    label="SMS Device/Gateway ID"
+                    label={smsMode === "credits" ? "Gateway or partner ID" : "SMS device ID"}
                     name="defaultSmsDeviceId"
                     value={smsDevice}
                     onChange={setSmsDevice}

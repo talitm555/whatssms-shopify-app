@@ -45,3 +45,32 @@ export function waAccountSelectOptions(json: WhatssmsJson): { label: string; val
   }
   return out;
 }
+
+/** Options from GET /api/get/rates — gateways (numeric id) and partners (`unique` id). */
+export function gatewayPartnerSelectOptions(json: WhatssmsJson): { label: string; value: string }[] {
+  const { ok, data } = readWhatssmsEnvelope<{
+    gateways?: unknown[];
+    partners?: unknown[];
+  }>(json);
+  if (!ok || !data) return [];
+  const out: { label: string; value: string }[] = [];
+  if (Array.isArray(data.gateways)) {
+    for (const g of data.gateways) {
+      const row = g as Record<string, unknown>;
+      const id = row.id != null ? String(row.id) : "";
+      if (!id) continue;
+      const name = row.name != null ? String(row.name) : `Gateway ${id}`;
+      out.push({ label: `${name} (ID ${id})`, value: id });
+    }
+  }
+  if (Array.isArray(data.partners)) {
+    for (const p of data.partners) {
+      const row = p as Record<string, unknown>;
+      const unique = row.unique != null ? String(row.unique) : "";
+      if (!unique) continue;
+      const name = row.name != null ? String(row.name) : `Partner ${unique}`;
+      out.push({ label: `${name} (ID ${unique})`, value: unique });
+    }
+  }
+  return out;
+}

@@ -422,11 +422,15 @@ async function sendCodConfirmationFlow(ctx: {
 
   if (settings.codSendSms) {
     const text = applyTemplate(settings.codSmsTemplate, vars);
+    const smsMode = settings.defaultSmsMode === "credits" ? "credits" : "devices";
+    const senderId = settings.defaultSmsDeviceId || undefined;
     await client.sendSms({
       recipient: phone,
       message: text,
-      mode: settings.defaultSmsMode === "credits" ? "credits" : "devices",
-      sim: settings.defaultSmsDeviceId || undefined,
+      mode: smsMode,
+      ...(smsMode === "credits"
+        ? { gateway: senderId }
+        : { device: senderId, sim: "1" }),
       ...(settings.urlShortenerSms ? { shortener: "1" } : {}),
     });
   }

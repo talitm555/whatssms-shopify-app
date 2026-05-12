@@ -47,25 +47,42 @@ export class WhatssmsClient {
     return res.json() as Promise<WhatssmsJson>;
   }
 
+  /** Gateway + partner pricing — GET /api/get/rates (requires `get_rates` on the API key). */
+  async getRates(): Promise<WhatssmsJson> {
+    const res = await fetch(this.url("/api/get/rates"));
+    return res.json() as Promise<WhatssmsJson>;
+  }
+
   /** Single SMS — POST /api/send/sms (form data per docs). */
   async sendSms(params: {
     recipient: string;
     message: string;
     mode: "devices" | "credits";
+    /** Linked Android device id (`mode=devices`). */
+    device?: string;
+    /** SIM slot **1** or **2** (`mode=devices` only). */
     sim?: string;
+    /** Gateway id (int) or partner device `unique` (`mode=credits`). */
+    gateway?: string;
     /** When set (e.g. `"1"`), sent as WhatsSMS `shortener` form field. Omit to disable. */
     shortener?: string;
     priority?: string;
   }): Promise<WhatssmsJson> {
     const body = new URLSearchParams();
-    body.set("recipient", params.recipient);
+    body.set("phone", params.recipient);
     body.set("message", params.message);
     body.set("mode", params.mode);
-    if (params.sim) body.set("sim", params.sim);
+    if (params.mode === "devices") {
+      if (params.device) body.set("device", params.device);
+      const sim = params.sim === "1" || params.sim === "2" ? params.sim : "1";
+      body.set("sim", sim);
+      if (params.priority) body.set("priority", params.priority);
+    } else {
+      if (params.gateway) body.set("gateway", params.gateway);
+    }
     if (params.shortener != null && params.shortener !== "") {
       body.set("shortener", params.shortener);
     }
-    if (params.priority) body.set("priority", params.priority);
 
     const res = await fetch(this.url("/api/send/sms"), {
       method: "POST",
