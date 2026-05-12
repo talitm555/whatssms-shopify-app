@@ -116,6 +116,7 @@ export default function NotificationsNewPage() {
           <Banner tone="critical">{actionData.error}</Banner>
         )}
         <Form method="post">
+          <BlockStack gap="400">
           <input type="hidden" name="eventKey" value={eventKey} />
           <Card>
             <BlockStack gap="300">
@@ -209,11 +210,12 @@ export default function NotificationsNewPage() {
               </label>
             </BlockStack>
           </Card>
-          <Box paddingBlockEnd="400">
+          <Box paddingBlockStart="400">
             <Button submit variant="primary" loading={busy}>
               Save
             </Button>
           </Box>
+          </BlockStack>
         </Form>
       </BlockStack>
     </Page>

@@ -116,7 +116,7 @@ export default function NotificationsEditPage() {
           <Banner tone="critical">{actionData.error}</Banner>
         )}
         <Card>
-          <BlockStack gap="200">
+          <BlockStack gap="300">
             <Text as="p" variant="bodyMd">
               Event: <strong>{label}</strong>
             </Text>
@@ -126,6 +126,7 @@ export default function NotificationsEditPage() {
           </BlockStack>
         </Card>
         <Form method="post">
+          <BlockStack gap="400">
           <input type="hidden" name="intent" value="save" />
           <input type="hidden" name="automationKey" value={row.key} />
           <Card>
@@ -191,22 +192,28 @@ export default function NotificationsEditPage() {
             </Card>
           ) : null}
           <Card>
-            <label>
-              <input
-                type="checkbox"
-                name="enabled"
-                value="on"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.currentTarget.checked)}
-              />{" "}
-              Enabled
-            </label>
+            <BlockStack gap="200">
+              <Text as="h2" variant="headingMd">
+                Status
+              </Text>
+              <label>
+                <input
+                  type="checkbox"
+                  name="enabled"
+                  value="on"
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.currentTarget.checked)}
+                />{" "}
+                Enabled
+              </label>
+            </BlockStack>
           </Card>
-          <Box paddingBlockEnd="400">
+          <Box paddingBlockStart="400">
             <Button submit variant="primary" loading={busy}>
               Save
             </Button>
           </Box>
+          </BlockStack>
         </Form>
         <Form
           method="post"
