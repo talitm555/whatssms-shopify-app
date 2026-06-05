@@ -19,6 +19,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3150"
+    networks:
+      - default
+      - database-net
 
   job-worker:
     profiles: ["with-worker"]
@@ -32,3 +35,11 @@ services:
       NODE_ENV: production
       DISABLE_ASYNC_JOB_SWEEP: "1"
     command: ["npm", "run", "job-worker"]
+    networks:
+      - default
+      - database-net
+
+networks:
+  database-net:
+    name: ${DB_NETWORK_NAME:-automationslagashbiz_default}
+    external: true

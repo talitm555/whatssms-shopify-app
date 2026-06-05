@@ -93,12 +93,13 @@ jobs:
           SHOPIFY_APP_IMAGE: ${{ needs.build-and-push.outputs.image }}:main
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           GHCR_USERNAME: ${{ vars.GHCR_USERNAME }}
+          DB_NETWORK_NAME: ${{ vars.DB_NETWORK_NAME }}
         with:
           host: ${{ vars.DEPLOY_HOST }}
           username: ${{ vars.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
-          envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,SHOPIFY_APP_STORE_LISTING_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME
+          envs: DATABASE_URL,SHOPIFY_API_SECRET,APP_ENCRYPTION_SECRET,SHOPIFY_API_KEY,SCOPES,SHOPIFY_APP_URL,SHOPIFY_APP_STORE_LISTING_URL,WHATSSMS_API_BASE_URL,PORT,DISABLE_ASYNC_JOB_SWEEP,SHOPIFY_APP_IMAGE,GHCR_PULL_TOKEN,GHCR_USERNAME,DB_NETWORK_NAME
           script: |
             set -euo pipefail
             DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
@@ -131,6 +132,6 @@ jobs:
               --name "$CONTAINER_APP" \
               --restart unless-stopped \
               -p 127.0.0.1:3150:3150 \
-              --add-host=host.docker.internal:host-gateway \
+              --network "${DB_NETWORK_NAME:-automationslagashbiz_default}" \
               --env-file .env \
               "$SHOPIFY_APP_IMAGE"
