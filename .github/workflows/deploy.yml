@@ -71,7 +71,7 @@ jobs:
       - name: Shopify app deploy
         env:
           SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN }}
-        run: shopify app deploy --force
+        run: shopify app deploy
 
   deploy-server:
     runs-on: ubuntu-latest
